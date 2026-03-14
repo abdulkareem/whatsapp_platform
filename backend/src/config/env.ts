@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 dotenv.config();
@@ -75,6 +76,23 @@ const resolveDatabaseUrl = () => {
   return databaseUrl;
 };
 
+const resolveAdminTokenSecret = () => {
+  const configuredSecret = cleanEnvValue(process.env.ADMIN_TOKEN_SECRET ?? process.env.JWT_SECRET);
+
+  if (configuredSecret) return configuredSecret;
+
+  const seed = [
+    cleanEnvValue(process.env.WHATSAPP_TOKEN ?? process.env.WHATSAPP_ACCESS_TOKEN),
+    cleanEnvValue(process.env.VERIFY_TOKEN ?? process.env.WHATSAPP_VERIFY_TOKEN),
+    cleanEnvValue(process.env.ADMIN_EMAIL ?? process.env.ADMIN_LOGIN_EMAIL),
+    'whatsapp-platform'
+  ]
+    .filter(Boolean)
+    .join(':');
+
+  return createHash('sha256').update(seed).digest('hex');
+};
+
 const rawEnv = {
   ...process.env,
   DATABASE_URL: resolveDatabaseUrl(),
@@ -90,7 +108,7 @@ const rawEnv = {
   SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
-  ADMIN_TOKEN_SECRET: process.env.ADMIN_TOKEN_SECRET ?? process.env.JWT_SECRET ?? process.env.WHATSAPP_TOKEN
+  ADMIN_TOKEN_SECRET: resolveAdminTokenSecret()
 };
 
 const envSchema = z.object({
