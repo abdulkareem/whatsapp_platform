@@ -34,3 +34,8 @@ Message `MYCROWB LOGIN`:
   - Deploy worker service (`npm run worker`).
   - Provision managed Postgres + Redis.
   - Set env variables from `.env.example`.
+- For Railway (backend) + Cloudflare Pages (frontend):
+  - Backend + worker run on Railway from `backend/`.
+  - Dashboard runs on Cloudflare Pages from `dashboard/`.
+  - Set `VITE_API_BASE_URL` to your Railway API URL.
+  - Restrict backend CORS using `CORS_ORIGINS`.

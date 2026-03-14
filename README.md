@@ -45,3 +45,10 @@ curl -X POST http://localhost:4000/api/messages/send \
   -H "X-APP-KEY: your-app-key" \
   -d '{"mobile":"919747917623","message":"Welcome to MyCrowb"}'
 ```
+
+## Railway + Cloudflare deployment
+- **Backend (Railway):** Deploy from `backend/`, set start command to `npm run start` and build command to `npm run build`.
+- **Worker (Railway):** Create a second service from `backend/` with command `npm run worker`.
+- **Frontend (Cloudflare Pages):** Deploy from `dashboard/` with build command `npm run build` and output directory `dist`.
+- Set `VITE_API_BASE_URL` in Cloudflare to your Railway backend URL.
+- Set `CORS_ORIGINS` in Railway to your Cloudflare domain (comma-separated for multiple domains).
