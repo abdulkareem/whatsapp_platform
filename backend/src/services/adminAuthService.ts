@@ -6,6 +6,7 @@ import { generateOTP } from '../utils/otpGenerator';
 import { normalizePhone } from '../utils/phoneFormatter';
 
 const activeTokens = new Set<string>();
+const GENERIC_ADMIN_DEVICE_ID = '__any_device__';
 
 export const adminAuthService = {
   isAdminMobile(mobile: string) {
@@ -30,7 +31,7 @@ export const adminAuthService = {
     };
   },
 
-  async issueWhatsAppOtp(adminMobile: string, deviceId: string) {
+  async issueWhatsAppOtp(adminMobile: string, deviceId = GENERIC_ADMIN_DEVICE_ID) {
     const normalizedMobile = normalizePhone(adminMobile);
     const code = generateOTP(6);
     const expiresAt = addMinutes(new Date(), env.OTP_EXPIRY_MINUTES);
@@ -77,10 +78,10 @@ export const adminAuthService = {
     const record = await prisma.adminOtp.findFirst({
       where: {
         mobile: normalizedMobile,
-        deviceId,
         code: otp,
         used: false,
-        expiresAt: { gt: new Date() }
+        expiresAt: { gt: new Date() },
+        deviceId: { in: [deviceId, GENERIC_ADMIN_DEVICE_ID] }
       },
       orderBy: { createdAt: 'desc' }
     });
