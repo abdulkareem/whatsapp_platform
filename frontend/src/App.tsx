@@ -8,7 +8,7 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import { auth } from './services/auth';
 
 const navItems = [
-  ['/', 'Gateway Health'],
+  ['/dashboard', 'Gateway Health'],
   ['/apps', 'App Management'],
   ['/logs', 'Message Logs'],
   ['/broadcast', 'Broadcast Tool'],
@@ -41,7 +41,8 @@ function AppLayout() {
         </aside>
         <main>
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<Navigate replace to="/dashboard" />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/apps" element={<AppManagementPage />} />
             <Route path="/logs" element={<MessageLogsPage />} />
             <Route path="/broadcast" element={<BroadcastPage />} />
@@ -58,7 +59,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={loggedIn ? <Navigate replace to="/" /> : <AdminLoginPage />} />
+      <Route path="/login" element={loggedIn ? <Navigate replace to="/dashboard" /> : <AdminLoginPage />} />
       <Route path="/*" element={loggedIn ? <AppLayout /> : <Navigate replace to="/login" />} />
     </Routes>
   );
