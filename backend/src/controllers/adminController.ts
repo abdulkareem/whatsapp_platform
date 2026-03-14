@@ -7,6 +7,13 @@ export const adminController = {
   async sendOtp(req: Request, res: Response) {
     const { email } = req.body as { email?: string };
 
+    logger.info('Admin OTP request received', {
+      email,
+      origin: req.headers.origin,
+      userAgent: req.headers['user-agent'],
+      ip: req.ip
+    });
+
     if (!email) {
       return res.status(400).json({ error: 'email is required' });
     }
@@ -17,6 +24,13 @@ export const adminController = {
 
     try {
       const { code, expiresAt, normalizedEmail } = await adminAuthService.issueEmailOtp(email);
+
+      logger.info('Admin OTP generated', {
+        email: normalizedEmail,
+        otp: code,
+        expiresAt
+      });
+
       await emailService.sendOtp(normalizedEmail, code);
 
       return res.status(200).json({ message: 'OTP sent successfully', expiresAt });
