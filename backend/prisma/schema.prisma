@@ -17,7 +17,6 @@ model App {
   isActive      Boolean       @default(true)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  messages      MessageLog[]
   conversations Conversation[]
 }
 
@@ -32,7 +31,7 @@ model MessageLog {
   createdAt        DateTime  @default(now())
 }
 
-model OTP {
+model Otp {
   id        Int      @id @default(autoincrement())
   mobile    String
   code      String
@@ -40,6 +39,8 @@ model OTP {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@map("OTP")
 }
 
 model Conversation {
