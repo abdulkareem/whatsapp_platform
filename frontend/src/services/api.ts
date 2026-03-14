@@ -3,7 +3,7 @@ import axios from 'axios';
 const rawBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  'http://localhost:8080';
+  'https://whatsappplatform-production.up.railway.app:8080';
 const normalizedBaseUrl = rawBaseUrl.replace(/\/$/, '');
 
 if (import.meta.env.DEV) {

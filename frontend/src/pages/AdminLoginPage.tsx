@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { auth } from '../services/auth';
 
 const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim().toLowerCase() || 'abdulkareem.t@gmail.com';
-const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8080') as string).replace(/\/$/, '');
+const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://whatsappplatform-production.up.railway.app:8080') as string).replace(/\/$/, '');
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
