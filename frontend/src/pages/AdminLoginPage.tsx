@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { auth } from '../services/auth';
 
 const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim().toLowerCase() || 'abdulkareem.t@gmail.com';
+const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8080') as string).replace(/\/$/, '');
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -31,7 +32,7 @@ export default function AdminLoginPage() {
       await api.post('/api/admin/send-otp', { email: normalizedEmail });
       setOtpSent(true);
     } catch (error) {
-      const fallback = 'Could not send OTP to the provided email.';
+      const fallback = `Could not send OTP to the provided email (backend: ${API_BASE_URL}).`;
       if (error instanceof AxiosError) {
         const backendError = error.response?.data?.error;
         const status = error.response?.status;
@@ -78,7 +79,8 @@ export default function AdminLoginPage() {
   return (
     <div className="mx-auto mt-20 max-w-md rounded-lg border bg-white p-6 shadow-sm">
       <h1 className="mb-2 text-2xl font-bold">Admin Login</h1>
-      <p className="mb-4 text-sm text-slate-600">Login with admin email. OTP will be sent to your email.</p>
+      <p className="mb-1 text-sm text-slate-600">Login with admin email. OTP will be sent to your email.</p>
+      <p className="mb-4 text-xs text-slate-500">Backend API: {API_BASE_URL}</p>
 
       <form className="space-y-4" onSubmit={submit}>
         <div>
