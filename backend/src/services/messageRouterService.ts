@@ -4,8 +4,13 @@ import { appService } from './appService';
 import { logger } from '../config/logger';
 
 export const messageRouterService = {
+  normalizeKeyword(token: string): string {
+    return token.replace(/[^A-Z0-9_]/gi, '').toUpperCase();
+  },
+
   extractKeyword(message: string): string {
-    return message.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
+    const firstToken = message.trim().split(/\s+/)[0] ?? '';
+    return this.normalizeKeyword(firstToken);
   },
 
   extractCommand(message: string): string {
