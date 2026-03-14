@@ -3,10 +3,7 @@ import { env } from '../config/env';
 import { messageRouterService } from '../services/messageRouterService';
 import { logger } from '../config/logger';
 import type { WhatsAppInboundPayload } from '../types/shared';
-import { adminAuthService } from '../services/adminAuthService';
-import { whatsappService } from '../services/whatsappService';
 
-const adminHiRegex = /^hi(?:\b|\s|$)/i;
 
 export const webhookController = {
   verifyWebhook(req: Request, res: Response) {
@@ -44,14 +41,6 @@ export const webhookController = {
       logger.info('Inbound WhatsApp message received', { from: mobile, text: message });
 
       try {
-        const isAdminHi = adminHiRegex.test(message.toLowerCase());
-        if (adminAuthService.isAdminMobile(mobile) && isAdminHi) {
-          const { code } = await adminAuthService.issueWhatsAppOtp(mobile);
-          const otpMessage = `Your login code is ${code}. Use this 6-digit PIN on the admin login page.`;
-          await whatsappService.sendMessage(mobile, otpMessage);
-          continue;
-        }
-
         await messageRouterService.routeIncomingMessage(mobile, message);
       } catch (error) {
         logger.error('Failed to route inbound message', { error, mobile, message });

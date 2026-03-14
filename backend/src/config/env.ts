@@ -21,7 +21,8 @@ const envSchema = z.object({
   OTP_EXPIRY_MINUTES: z.coerce.number().default(10),
   DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
   CORS_ORIGINS: z.string().optional(),
-  ADMIN_WHATSAPP_NUMBER: z.string().min(6).default('9747917623')
+  ADMIN_EMAIL: z.string().email().default('abdulkareem.t@gmail.com'),
+  SMTP_FROM_EMAIL: z.string().email().optional()
 });
 
 const parsed = envSchema.safeParse(rawEnv);

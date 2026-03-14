@@ -61,9 +61,9 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + build
 
 ## Admin login
 
-- Webhook verify token: set `VERIFY_TOKEN=Kareem@123` in backend environment.
-- Admin WhatsApp login is restricted to `9747917623` in the frontend.
-- Click **Verify via WhatsApp** to open chat with business account `9744917623` and auto-fill `hi`.
-- Use the 4-digit `ADMIN_WHATSAPP_PIN` to complete login and access the dashboard.
+- Admin email login is restricted to `abdulkareem.t@gmail.com`.
+- Click **Verify** on the login page to send a 6-digit OTP to that email.
+- Configure `SMTP_FROM_EMAIL` (and a working `sendmail` binary on the server) so OTP emails can be delivered.
+- Enter the OTP and submit to access the dashboard.
 
 Use App Management to connect external apps (keyword + endpoint) and then consume the generated app API key from your external service.
