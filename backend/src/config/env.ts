@@ -3,8 +3,46 @@ import { z } from 'zod';
 
 dotenv.config();
 
+const cleanEnvValue = (value?: string) => {
+  if (!value) return value;
+  return value.replace(/\\n/g, '').trim();
+};
+
+const isRailwayInternalPostgresUrl = (value?: string) => {
+  if (!value) return false;
+
+  try {
+    return new URL(value).hostname.endsWith('.railway.internal');
+  } catch {
+    return value.includes('railway.internal');
+  }
+};
+
+const resolveDatabaseUrl = () => {
+  const databaseUrl = cleanEnvValue(process.env.DATABASE_URL);
+  const fallbackCandidates = [
+    process.env.DATABASE_PUBLIC_URL,
+    process.env.DATABASE_URL_PUBLIC,
+    process.env.POSTGRES_URL,
+    process.env.POSTGRES_PUBLIC_URL
+  ].map(cleanEnvValue);
+
+  if (!databaseUrl) {
+    return fallbackCandidates.find(Boolean);
+  }
+
+  const isRailwayRuntime = Boolean(process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_ENVIRONMENT_ID);
+
+  if (!isRailwayRuntime && isRailwayInternalPostgresUrl(databaseUrl)) {
+    return fallbackCandidates.find(Boolean) ?? databaseUrl;
+  }
+
+  return databaseUrl;
+};
+
 const rawEnv = {
   ...process.env,
+  DATABASE_URL: resolveDatabaseUrl(),
   WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID,
   WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN ?? process.env.WHATSAPP_ACCESS_TOKEN,
   VERIFY_TOKEN: process.env.VERIFY_TOKEN ?? process.env.WHATSAPP_VERIFY_TOKEN,
