@@ -69,10 +69,13 @@ const sendViaResend = async (to: string, otp: string) => {
   const apiKey = getResendApiKey();
 
   if (!apiKey) {
+    if (env.NODE_ENV !== 'production') {
+      logger.warn('RESEND_API_KEY not set — skipping email OTP via Resend');
+    }
     return false;
   }
 
-  const from = env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
+  const from = env.RESEND_FROM_EMAIL ?? 'Aureliv <no-reply@aureliv.in>';
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -83,9 +86,17 @@ const sendViaResend = async (to: string, otp: string) => {
     body: JSON.stringify({
       from,
       to: [to],
-      subject: 'Hello World',
+      subject: 'Your Aureliv OTP',
       html: `
-        <p>otp to login is... <strong>${otp}</strong>!</p>
+        <div style="font-family: Arial, sans-serif; line-height: 1.5">
+          <h2>Aureliv Verification Code</h2>
+          <p>Your one-time password is:</p>
+          <h1 style="letter-spacing: 6px">${otp}</h1>
+          <p>This OTP is valid for a short time.</p>
+          <p style="font-size: 12px; color: #666">
+            If you did not request this, please ignore this email.
+          </p>
+        </div>
       `
     })
   });
