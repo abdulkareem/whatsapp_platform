@@ -3,6 +3,10 @@ import { env } from '../config/env';
 import { messageRouterService } from '../services/messageRouterService';
 import { logger } from '../config/logger';
 import type { WhatsAppInboundPayload } from '../types/shared';
+import { adminAuthService } from '../services/adminAuthService';
+import { whatsappService } from '../services/whatsappService';
+
+const adminHiRegex = /^hi(?:\s+([a-zA-Z0-9_-]{6,64}))?$/i;
 
 export const webhookController = {
   verifyWebhook(req: Request, res: Response) {
@@ -31,7 +35,7 @@ export const webhookController = {
 
     for (const item of messages) {
       const mobile = item.from;
-      const message = item.text?.body;
+      const message = item.text?.body?.trim();
 
       if (!mobile || !message) {
         continue;
@@ -40,6 +44,16 @@ export const webhookController = {
       logger.info('Inbound WhatsApp message received', { from: mobile, text: message });
 
       try {
+        const adminHiMatch = message.match(adminHiRegex);
+        if (adminAuthService.isAdminMobile(mobile) && adminHiMatch) {
+          const providedDeviceId = adminHiMatch[1];
+          const deviceId = providedDeviceId ?? 'unknown-device';
+          const { code } = await adminAuthService.issueWhatsAppOtp(mobile, deviceId);
+          const otpMessage = `Admin OTP: ${code}\nDevice ID: ${deviceId}\nExpires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
+          await whatsappService.sendMessage(mobile, otpMessage);
+          continue;
+        }
+
         await messageRouterService.routeIncomingMessage(mobile, message);
       } catch (error) {
         logger.error('Failed to route inbound message', { error, mobile, message });

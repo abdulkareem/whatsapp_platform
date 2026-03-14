@@ -3,6 +3,6 @@ import { adminController } from '../controllers/adminController';
 
 const router = Router();
 
-router.post('/login', adminController.login);
+router.post('/verify-otp', adminController.verifyOtp);
 
 export default router;

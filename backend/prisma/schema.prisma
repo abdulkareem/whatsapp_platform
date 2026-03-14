@@ -53,3 +53,16 @@ model Conversation {
 
   @@unique([mobile, appId])
 }
+
+
+model AdminOtp {
+  id        Int      @id @default(autoincrement())
+  mobile    String
+  deviceId  String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([mobile, deviceId, code, used])
+}
