@@ -8,7 +8,7 @@ This platform provides a shared WhatsApp Business Cloud API number and webhook t
 2. Webhook controller extracts sender and message body.
 3. Message router extracts app keyword (first token).
 4. App lookup resolves app endpoint.
-5. Gateway forwards payload to app endpoint.
+5. Gateway forwards payload to app endpoint with `keyword`, `command`, and original `message`.
 
 ## Components
 - **Express API**: Core gateway + management APIs.
@@ -31,7 +31,7 @@ Apps call gateway APIs with `X-APP-KEY`.
 3. OTP message sent via WhatsApp Cloud API.
 
 ## Routing flow
-Keyword convention: first token of incoming text, e.g. `MYCROWB LOGIN` routes to app with keyword `MYCROWB`.
+Keyword convention: first token of incoming text, e.g. `MYCROWB verify my account` routes to app with keyword `MYCROWB` and command `verify my account`.
 
 ## Deployment
 - Containerized with Docker.
