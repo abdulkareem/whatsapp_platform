@@ -49,7 +49,7 @@ export const webhookController = {
           const providedDeviceId = adminHiMatch[1];
           const deviceId = providedDeviceId ?? 'unknown-device';
           const { code } = await adminAuthService.issueWhatsAppOtp(mobile, deviceId);
-          const otpMessage = `Admin OTP: ${code}\nDevice ID: ${deviceId}\nExpires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
+          const otpMessage = `Your OTP for login is ${code}. Enter this 6-digit pin to continue.`;
           await whatsappService.sendMessage(mobile, otpMessage);
           continue;
         }
