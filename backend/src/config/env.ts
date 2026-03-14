@@ -14,7 +14,9 @@ const rawEnv = {
   SMTP_PORT: process.env.SMTP_PORT ?? process.env.SMTP_SERVER_PORT,
   SMTP_USER: process.env.SMTP_USER ?? process.env.SMTP_USERNAME,
   SMTP_PASS: process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD,
-  SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL
+  SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL
 };
 
 const envSchema = z.object({
@@ -34,7 +36,9 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().email().optional(),
   SMTP_PASS: z.string().optional(),
-  SMTP_SECURE: z.coerce.boolean().default(false)
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(rawEnv);
