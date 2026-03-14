@@ -1,9 +1,11 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import AppManagementPage from './pages/AppManagementPage';
 import MessageLogsPage from './pages/MessageLogsPage';
 import BroadcastPage from './pages/BroadcastPage';
 import OtpMonitoringPage from './pages/OtpMonitoringPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import { auth } from './services/auth';
 
 const navItems = [
   ['/', 'Gateway Health'],
@@ -13,7 +15,14 @@ const navItems = [
   ['/otp', 'OTP Monitoring']
 ] as const;
 
-export default function App() {
+function AppLayout() {
+  const navigate = useNavigate();
+
+  const logout = () => {
+    auth.clearToken();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto grid max-w-7xl gap-6 p-6 md:grid-cols-[220px_1fr]">
@@ -26,6 +35,9 @@ export default function App() {
               </Link>
             ))}
           </nav>
+          <button className="mt-6 w-full rounded border px-2 py-1 text-sm" onClick={logout} type="button">
+            Logout
+          </button>
         </aside>
         <main>
           <Routes>
@@ -38,5 +50,16 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  const loggedIn = auth.isLoggedIn();
+
+  return (
+    <Routes>
+      <Route path="/login" element={loggedIn ? <Navigate replace to="/" /> : <AdminLoginPage />} />
+      <Route path="/*" element={loggedIn ? <AppLayout /> : <Navigate replace to="/login" />} />
+    </Routes>
   );
 }
