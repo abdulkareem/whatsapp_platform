@@ -63,7 +63,9 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + build
 
 - Admin email login is restricted to `abdulkareem.t@gmail.com`.
 - Click **Verify** on the login page to send a 6-digit OTP to that email.
-- Configure `SMTP_FROM_EMAIL` (and a working `sendmail` binary on the server) so OTP emails can be delivered.
+- Configure `SMTP_FROM_EMAIL` for sender identity.
+- For Zoho SMTP, set `SMTP_HOST=smtp.zoho.com`, `SMTP_PORT=587`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_SECURE=false` (STARTTLS on port 587).
+- If SMTP variables are not provided, the service falls back to a local `sendmail` binary.
 - Enter the OTP and submit to access the dashboard.
 
 Use App Management to connect external apps (keyword + endpoint) and then consume the generated app API key from your external service.

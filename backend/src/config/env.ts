@@ -22,7 +22,12 @@ const envSchema = z.object({
   DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
   CORS_ORIGINS: z.string().optional(),
   ADMIN_EMAIL: z.string().email().default('abdulkareem.t@gmail.com'),
-  SMTP_FROM_EMAIL: z.string().email().optional()
+  SMTP_FROM_EMAIL: z.string().email().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().email().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z.coerce.boolean().default(false)
 });
 
 const parsed = envSchema.safeParse(rawEnv);
