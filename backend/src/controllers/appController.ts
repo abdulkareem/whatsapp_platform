@@ -15,16 +15,29 @@ export const appController = {
       rateLimitRpm?: number;
     };
 
-    if (!name || !keyword || !endpoint) {
+    const normalizedName = name?.trim();
+    const normalizedKeyword = keyword?.trim();
+    const normalizedEndpoint = endpoint?.trim();
+
+    if (!normalizedName || !normalizedKeyword || !normalizedEndpoint) {
       return res.status(400).json({ error: 'name, keyword and endpoint are required' });
     }
 
-    const app = await appService.createApp(name, keyword, endpoint, rateLimitRpm);
+    if (rateLimitRpm !== undefined && (!Number.isInteger(rateLimitRpm) || rateLimitRpm <= 0)) {
+      return res.status(400).json({ error: 'rateLimitRpm must be a positive integer' });
+    }
+
+    const app = await appService.createApp(normalizedName, normalizedKeyword, normalizedEndpoint, rateLimitRpm);
     return res.status(201).json(app);
   },
 
   async rotateApiKey(req: Request, res: Response) {
     const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id param must be a positive integer' });
+    }
+
     const app = await appService.rotateApiKey(id);
     return res.status(200).json(app);
   }
