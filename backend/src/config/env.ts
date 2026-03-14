@@ -14,7 +14,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
+  REDIS_URL: z.string().min(1).optional(),
   WHATSAPP_PHONE_ID: z.string().min(1),
   WHATSAPP_TOKEN: z.string().min(1),
   VERIFY_TOKEN: z.string().min(1).default('Kareem@123'),
