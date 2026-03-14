@@ -89,7 +89,8 @@ const rawEnv = {
   SMTP_PASS: process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD,
   SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
-  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  ADMIN_TOKEN_SECRET: process.env.ADMIN_TOKEN_SECRET ?? process.env.JWT_SECRET ?? process.env.WHATSAPP_TOKEN
 };
 
 const envSchema = z.object({
@@ -104,6 +105,7 @@ const envSchema = z.object({
   DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
   CORS_ORIGINS: z.string().optional(),
   ADMIN_EMAIL: z.string().email().default('abdulkareem.t@gmail.com'),
+  ADMIN_TOKEN_SECRET: z.string().min(16),
   SMTP_FROM_EMAIL: z.string().email().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
