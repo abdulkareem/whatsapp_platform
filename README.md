@@ -59,6 +59,16 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + build
 - frontend
 
 
+
+## Database notes (Prisma + Railway)
+
+- `postgres.railway.internal` works only from services running inside Railway private networking.
+- If you run the backend locally, use a public DB URL (`DATABASE_PUBLIC_URL` / `POSTGRES_PUBLIC_URL`) or `PG*` variables so the backend can build a reachable `DATABASE_URL`.
+- If no public DB variable is provided, backend falls back to `postgresql://postgres:***@tramway.proxy.rlwy.net:58990/railway`.
+- Backend startup now runs Prisma DB initialization automatically:
+  - `prisma migrate deploy` when migrations exist
+  - `prisma db push` when no migrations exist
+
 ## Admin login
 
 - Admin email login is restricted to `ADMIN_EMAIL` on the backend and `VITE_ADMIN_EMAIL` on the frontend (defaults to `abdulkareem.t@gmail.com` if omitted).

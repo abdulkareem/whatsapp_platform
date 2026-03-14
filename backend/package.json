@@ -7,11 +7,12 @@
     "dev": "tsx watch src/server.ts",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
+    "start": "npm run db:init && node dist/server.js",
     "lint": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "db:init": "node scripts/init-db.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

@@ -3,6 +3,9 @@ import { z } from 'zod';
 
 dotenv.config();
 
+const DEFAULT_DATABASE_PUBLIC_URL =
+  'postgresql://postgres:ArWbgvYQnKhfsvFcSsDnwEBBhdMIuNnM@tramway.proxy.rlwy.net:58990/railway';
+
 const cleanEnvValue = (value?: string) => {
   if (!value) return value;
   return value.replace(/\\n/g, '').trim();
@@ -18,13 +21,45 @@ const isRailwayInternalPostgresUrl = (value?: string) => {
   }
 };
 
+const buildPostgresUrlFromParts = (
+  user?: string,
+  password?: string,
+  host?: string,
+  port?: string,
+  database?: string
+) => {
+  if (!user || !host || !port || !database) return undefined;
+
+  const encodedUser = encodeURIComponent(user);
+  const encodedPassword = encodeURIComponent(password ?? '');
+
+  return `postgresql://${encodedUser}:${encodedPassword}@${host}:${port}/${database}`;
+};
+
 const resolveDatabaseUrl = () => {
   const databaseUrl = cleanEnvValue(process.env.DATABASE_URL);
+
   const fallbackCandidates = [
     process.env.DATABASE_PUBLIC_URL,
     process.env.DATABASE_URL_PUBLIC,
     process.env.POSTGRES_URL,
-    process.env.POSTGRES_PUBLIC_URL
+    process.env.POSTGRES_PUBLIC_URL,
+    process.env.DATABASE_PRIVATE_URL,
+    DEFAULT_DATABASE_PUBLIC_URL,
+    buildPostgresUrlFromParts(
+      cleanEnvValue(process.env.PGUSER),
+      cleanEnvValue(process.env.PGPASSWORD),
+      cleanEnvValue(process.env.PGHOST),
+      cleanEnvValue(process.env.PGPORT),
+      cleanEnvValue(process.env.PGDATABASE)
+    ),
+    buildPostgresUrlFromParts(
+      cleanEnvValue(process.env.POSTGRES_USER),
+      cleanEnvValue(process.env.POSTGRES_PASSWORD),
+      cleanEnvValue(process.env.POSTGRES_HOST),
+      cleanEnvValue(process.env.POSTGRES_PORT),
+      cleanEnvValue(process.env.POSTGRES_DB)
+    )
   ].map(cleanEnvValue);
 
   if (!databaseUrl) {
