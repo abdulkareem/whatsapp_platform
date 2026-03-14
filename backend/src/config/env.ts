@@ -13,7 +13,8 @@ const envSchema = z.object({
   VERIFY_TOKEN: z.string().min(1),
   WEBHOOK_BASE_URL: z.string().optional(),
   OTP_EXPIRY_MINUTES: z.coerce.number().default(10),
-  DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100)
+  DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
+  CORS_ORIGINS: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(process.env);

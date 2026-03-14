@@ -17,7 +17,11 @@ import { messageController } from './controllers/messageController';
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+const corsOrigins = env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
+
+app.use(cors({
+  origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(loggerMiddleware);
 
