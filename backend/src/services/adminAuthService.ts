@@ -3,85 +3,40 @@ import { prisma } from '../database/prisma';
 import { env } from '../config/env';
 import { addMinutes } from '../utils/time';
 import { generateOTP } from '../utils/otpGenerator';
-import { normalizePhone } from '../utils/phoneFormatter';
 
 const activeTokens = new Set<string>();
-const GENERIC_ADMIN_DEVICE_ID = '__any_device__';
 
 export const adminAuthService = {
-  isAdminMobile(mobile: string) {
-    return normalizePhone(mobile) === normalizePhone(env.ADMIN_WHATSAPP_NUMBER);
+  isAdminEmail(email: string) {
+    return email.trim().toLowerCase() === env.ADMIN_EMAIL.toLowerCase();
   },
 
-  async getLoginRequirement(mobile: string, deviceId: string) {
-    const normalizedMobile = normalizePhone(mobile);
-
-    const device = await prisma.adminDevicePin.findUnique({
-      where: {
-        mobile_deviceId: {
-          mobile: normalizedMobile,
-          deviceId
-        }
-      }
-    });
-
-    return {
-      requiresWhatsappVerification: !device?.whatsappLinked,
-      hasPin: Boolean(device?.pin)
-    };
-  },
-
-  async issueWhatsAppOtp(adminMobile: string, deviceId = GENERIC_ADMIN_DEVICE_ID) {
-    const normalizedMobile = normalizePhone(adminMobile);
+  async issueEmailOtp(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
     const code = generateOTP(6);
     const expiresAt = addMinutes(new Date(), env.OTP_EXPIRY_MINUTES);
 
     await prisma.adminOtp.create({
       data: {
-        mobile: normalizedMobile,
-        deviceId,
+        mobile: normalizedEmail,
+        deviceId: normalizedEmail,
         code,
         expiresAt
       }
     });
 
-    return { code, expiresAt, normalizedMobile };
+    return { code, expiresAt, normalizedEmail };
   },
 
-  async verifyPin({ mobile, pin, deviceId }: { mobile: string; pin: string; deviceId: string }) {
-    const normalizedMobile = normalizePhone(mobile);
-
-    const device = await prisma.adminDevicePin.findUnique({
-      where: {
-        mobile_deviceId: {
-          mobile: normalizedMobile,
-          deviceId
-        }
-      }
-    });
-
-    if (!device || !device.whatsappLinked || device.pin !== pin) {
-      return null;
-    }
-
-    await prisma.adminDevicePin.update({
-      where: { id: device.id },
-      data: { lastVerifiedAt: new Date() }
-    });
-
-    return this.issueToken();
-  },
-
-  async verifyOtp({ mobile, otp, deviceId }: { mobile: string; otp: string; deviceId: string }) {
-    const normalizedMobile = normalizePhone(mobile);
+  async verifyOtp({ email, otp }: { email: string; otp: string }) {
+    const normalizedEmail = email.trim().toLowerCase();
 
     const record = await prisma.adminOtp.findFirst({
       where: {
-        mobile: normalizedMobile,
+        mobile: normalizedEmail,
         code: otp,
         used: false,
-        expiresAt: { gt: new Date() },
-        deviceId: { in: [deviceId, GENERIC_ADMIN_DEVICE_ID] }
+        expiresAt: { gt: new Date() }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -91,27 +46,6 @@ export const adminAuthService = {
     }
 
     await prisma.adminOtp.update({ where: { id: record.id }, data: { used: true } });
-
-    await prisma.adminDevicePin.upsert({
-      where: {
-        mobile_deviceId: {
-          mobile: normalizedMobile,
-          deviceId
-        }
-      },
-      update: {
-        pin: otp,
-        whatsappLinked: true,
-        lastVerifiedAt: new Date()
-      },
-      create: {
-        mobile: normalizedMobile,
-        deviceId,
-        pin: otp,
-        whatsappLinked: true,
-        lastVerifiedAt: new Date()
-      }
-    });
 
     return this.issueToken();
   },
