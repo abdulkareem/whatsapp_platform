@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { MessageLog } from '../types';
+import type { MessageLog } from '@whatsapp-platform/shared';
 
 export default function MessageLogsPage() {
   const [logs, setLogs] = useState<MessageLog[]>([]);

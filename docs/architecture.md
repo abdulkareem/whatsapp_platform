@@ -1,41 +1,21 @@
-# SaaS WhatsApp Messaging Platform (Mini Twilio)
+# Architecture
 
-## System architecture
+## Monorepo
+- `apps/backend`: Express API, Prisma, BullMQ worker (Railway).
+- `apps/dashboard`: React + Vite admin UI (Cloudflare Pages).
+- `packages/shared`: Shared TypeScript types imported by both apps.
 
-WhatsApp Cloud API → Webhook Controller → Message Router → Application Handler → External Apps
+## Runtime topology
+- Dashboard calls backend API using `VITE_API_BASE_URL`.
+- Backend processes API and webhook traffic.
+- Worker consumes queued jobs from Redis for broadcast delivery.
+- PostgreSQL stores app records, logs, OTPs, and related metadata.
 
-### Core backend modules
-- Multi-app gateway with keyword routing.
-- OTP service with DB persistence and expiry.
-- Broadcast service powered by BullMQ.
-- Notification/regular messaging API.
-- API key auth and rate limiting.
-- Message logs and conversation tracking.
+## Deployment model
+- Railway service 1: API server (`npm run start -w @whatsapp-platform/backend`).
+- Railway service 2: Worker (`npm run worker -w @whatsapp-platform/backend`).
+- Cloudflare Pages: Dashboard static bundle from `apps/dashboard/dist`.
 
-## External app integration
-1. Admin creates an app with `keyword`, `endpoint`, and generated `apiKey`.
-2. App sends outgoing messages with `X-APP-KEY`.
-3. Inbound messages starting with keyword are forwarded to app endpoint.
-
-## OTP flow
-- `POST /api/messages/otp/send` generates OTP.
-- OTP stored in `OTP` table.
-- WhatsApp message sent using Cloud API.
-
-## Routing flow
-Message `MYCROWB LOGIN`:
-- keyword = `MYCROWB`
-- matched app endpoint receives `{ mobile, message }`.
-
-## Deployment guide
-- Docker Compose includes backend, worker, dashboard, postgres, redis.
-- For Railway/Fly.io:
-  - Deploy backend service (`npm run start` after build).
-  - Deploy worker service (`npm run worker`).
-  - Provision managed Postgres + Redis.
-  - Set env variables from `.env.example`.
-- For Railway (backend) + Cloudflare Pages (frontend):
-  - Backend + worker run on Railway from `backend/`.
-  - Dashboard runs on Cloudflare Pages from `dashboard/`.
-  - Set `VITE_API_BASE_URL` to your Railway API URL.
-  - Restrict backend CORS using `CORS_ORIGINS`.
+## CI/CD
+- GitHub Actions validates lint + builds for shared, backend, and dashboard.
+- Deployment platforms pull from main branch using their service-specific commands.
