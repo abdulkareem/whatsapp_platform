@@ -1,21 +1,21 @@
-# Architecture
+# Architecture Overview
 
-## Monorepo
-- `apps/backend`: Express API, Prisma, BullMQ worker (Railway).
-- `apps/dashboard`: React + Vite admin UI (Cloudflare Pages).
-- `packages/shared`: Shared TypeScript types imported by both apps.
+- `backend`: Express API, Prisma, BullMQ worker (Railway).
+- `frontend`: React + Vite admin UI.
 
-## Runtime topology
-- Dashboard calls backend API using `VITE_API_BASE_URL`.
-- Backend processes API and webhook traffic.
-- Worker consumes queued jobs from Redis for broadcast delivery.
-- PostgreSQL stores app records, logs, OTPs, and related metadata.
+## Backend flow
 
-## Deployment model
-- Railway service 1: API server (`npm run start -w @whatsapp-platform/backend`).
-- Railway service 2: Worker (`npm run worker -w @whatsapp-platform/backend`).
-- Cloudflare Pages: Dashboard static bundle from `apps/dashboard/dist`.
+1. Webhook/message requests hit Express routes.
+2. Business logic services validate and persist with Prisma/PostgreSQL.
+3. Async or broadcast jobs are queued in Redis via BullMQ.
+4. Worker processes queued jobs and sends WhatsApp API requests.
 
-## CI/CD
-- GitHub Actions validates lint + builds for shared, backend, and dashboard.
-- Deployment platforms pull from main branch using their service-specific commands.
+## Frontend flow
+
+- React frontend calls backend REST endpoints using `VITE_API_BASE_URL`.
+- Frontend build output is generated at `frontend/dist`.
+
+## Deployment
+
+- Railway: backend API and worker from `backend` workspace.
+- Frontend hosting: static bundle from `frontend/dist`.

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { env } from '../config/env';
 import { messageRouterService } from '../services/messageRouterService';
 import { logger } from '../config/logger';
-import type { WhatsAppInboundPayload } from '@whatsapp-platform/shared';
+import type { WhatsAppInboundPayload } from '../types/shared';
 
 export const webhookController = {
   verifyWebhook(req: Request, res: Response) {

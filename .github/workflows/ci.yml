@@ -25,11 +25,8 @@ jobs:
       - name: Lint/typecheck workspaces
         run: npm run lint
 
-      - name: Build shared
-        run: npm run build -w @whatsapp-platform/shared --if-present
-
       - name: Build backend
         run: npm run build -w @whatsapp-platform/backend
 
-      - name: Build dashboard
-        run: npm run build -w @whatsapp-platform/dashboard
+      - name: Build frontend
+        run: npm run build -w @whatsapp-platform/frontend
