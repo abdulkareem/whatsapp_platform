@@ -11,14 +11,19 @@ export const webhookController = {
     const challenge = req.query['hub.challenge'];
 
     if (mode === 'subscribe' && token === env.VERIFY_TOKEN) {
+      logger.info('Webhook verified');
       return res.status(200).send(challenge);
     }
 
-    return res.status(403).json({ error: 'Webhook verification failed' });
+    return res.sendStatus(403);
   },
 
   async receiveWebhook(req: Request<unknown, unknown, WhatsAppInboundPayload>, res: Response) {
     const body = req.body;
+
+    if (body.object && body.object !== 'whatsapp_business_account') {
+      return res.sendStatus(200);
+    }
 
     const messages = body.entry?.flatMap((entry) =>
       entry.changes?.flatMap((change) => change.value?.messages ?? []) ?? []
@@ -32,6 +37,8 @@ export const webhookController = {
         continue;
       }
 
+      logger.info('Inbound WhatsApp message received', { from: mobile, text: message });
+
       try {
         await messageRouterService.routeIncomingMessage(mobile, message);
       } catch (error) {
@@ -39,6 +46,6 @@ export const webhookController = {
       }
     }
 
-    return res.status(200).json({ received: true });
+    return res.sendStatus(200);
   }
 };

@@ -19,6 +19,7 @@ export interface MessageLog {
 }
 
 export interface WhatsAppInboundPayload {
+  object?: string;
   entry?: Array<{
     changes?: Array<{
       value?: {
