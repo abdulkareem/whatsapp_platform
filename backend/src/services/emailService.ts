@@ -72,7 +72,7 @@ const sendViaResend = async (to: string, otp: string) => {
     return false;
   }
 
-  const from = env.RESEND_FROM_EMAIL ?? env.SMTP_FROM_EMAIL ?? `Aureliv <${env.ADMIN_EMAIL}>`;
+  const from = env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -83,18 +83,10 @@ const sendViaResend = async (to: string, otp: string) => {
     body: JSON.stringify({
       from,
       to: [to],
-      subject: 'Admin login OTP',
+      subject: 'Hello World',
       html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5">
-            <h2>Aureliv Verification Code</h2>
-            <p>Your one-time password is:</p>
-            <h1 style="letter-spacing: 6px">${otp}</h1>
-            <p>This OTP is valid for ${env.OTP_EXPIRY_MINUTES} minutes.</p>
-            <p style="font-size: 12px; color: #666">
-              If you did not request this, please ignore this email.
-            </p>
-          </div>
-        `
+        <p>otp to login is... <strong>${otp}</strong>!</p>
+      `
     })
   });
 
