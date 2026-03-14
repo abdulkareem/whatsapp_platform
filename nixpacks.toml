@@ -2,7 +2,7 @@
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npm run build -w @whatsapp-platform/backend"]
+cmds = ["npm run build --workspace=backend"]
 
 [start]
-cmd = "npm run start -w @whatsapp-platform/backend"
+cmd = "npm run start --workspace=backend"
