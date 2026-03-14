@@ -1,0 +1,15 @@
+{
+  "name": "whatsapp-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "dev:backend": "npm run dev -w @whatsapp-platform/backend",
+    "dev:dashboard": "npm run dev -w @whatsapp-platform/dashboard",
+    "dev": "echo 'Run dev:backend and dev:dashboard in separate terminals'"
+  }
+}

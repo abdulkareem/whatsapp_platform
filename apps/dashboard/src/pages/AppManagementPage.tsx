@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { AppRecord } from '../types';
+import type { AppRecord } from '@whatsapp-platform/shared';
 
 export default function AppManagementPage() {
   const [apps, setApps] = useState<AppRecord[]>([]);
