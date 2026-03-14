@@ -7,7 +7,14 @@ const rawEnv = {
   ...process.env,
   WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID,
   WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN ?? process.env.WHATSAPP_ACCESS_TOKEN,
-  VERIFY_TOKEN: process.env.VERIFY_TOKEN ?? process.env.WHATSAPP_VERIFY_TOKEN
+  VERIFY_TOKEN: process.env.VERIFY_TOKEN ?? process.env.WHATSAPP_VERIFY_TOKEN,
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? process.env.ADMIN_LOGIN_EMAIL,
+  SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL ?? process.env.SMTP_FROM,
+  SMTP_HOST: process.env.SMTP_HOST ?? process.env.SMTP_SERVER,
+  SMTP_PORT: process.env.SMTP_PORT ?? process.env.SMTP_SERVER_PORT,
+  SMTP_USER: process.env.SMTP_USER ?? process.env.SMTP_USERNAME,
+  SMTP_PASS: process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD,
+  SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL
 };
 
 const envSchema = z.object({
