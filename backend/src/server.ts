@@ -40,7 +40,7 @@ const corsOptions: cors.CorsOptions = {
     callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-ADMIN-TOKEN'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-ADMIN-TOKEN', 'X-APP-KEY', 'APP_API_KEY', 'X-API-KEY'],
   optionsSuccessStatus: 204
 };
 

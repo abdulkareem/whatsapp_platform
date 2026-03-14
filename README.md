@@ -80,3 +80,112 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + build
 - Enter the OTP and submit to access the dashboard.
 
 Use App Management to connect external apps (keyword + endpoint) and then consume the generated app API key from your external service.
+
+## External App Integration (APP_API_KEY)
+
+### 1) Register an external app + keyword mapping
+Create an app record (admin endpoint) and save returned `apiKey` as your external app's `APP_API_KEY`.
+
+```bash
+curl -X POST "$API_BASE_URL/api/apps" \
+  -H "Content-Type: application/json" \
+  -H "X-ADMIN-TOKEN: <ADMIN_TOKEN>" \
+  -d '{
+    "name": "Orders Service",
+    "keyword": "ORDER",
+    "endpoint": "https://orders.example.com/webhooks/whatsapp",
+    "rateLimitRpm": 120
+  }'
+```
+
+Example response:
+
+```json
+{
+  "id": 7,
+  "name": "Orders Service",
+  "keyword": "ORDER",
+  "endpoint": "https://orders.example.com/webhooks/whatsapp",
+  "apiKey": "2f7d...",
+  "rateLimitRpm": 120,
+  "isActive": true
+}
+```
+
+### 2) Send outbound WhatsApp using APP_API_KEY
+The send endpoint accepts any one of: `X-APP-KEY`, `APP_API_KEY`, `X-API-KEY`, or `Authorization: Bearer <APP_API_KEY>`.
+
+```bash
+curl -X POST "$API_BASE_URL/api/messages/send" \
+  -H "Content-Type: application/json" \
+  -H "APP_API_KEY: <APP_API_KEY>" \
+  -d '{
+    "mobile": "+12025550199",
+    "message": "Your order has shipped"
+  }'
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "provider": {
+    "messaging_product": "whatsapp",
+    "contacts": [{ "wa_id": "12025550199" }],
+    "messages": [{ "id": "wamid.HBgL..." }]
+  }
+}
+```
+
+### 3) Inbound webhook auto-routing by keyword
+Inbound text uses the **first token** as keyword (sanitized + uppercased). Remaining text is routed as `command`.
+
+Webhook example that routes to `ORDER` app:
+
+```bash
+curl -X POST "$API_BASE_URL/webhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "value": {
+          "messages": [{
+            "id": "wamid.INBOUND123",
+            "type": "text",
+            "from": "12025550199",
+            "text": { "body": "order create shipment 7781" }
+          }]
+        }
+      }]
+    }]
+  }'
+```
+
+Forwarded payload sent to the matched app endpoint:
+
+```json
+{
+  "mobile": "12025550199",
+  "message": "order create shipment 7781",
+  "keyword": "ORDER",
+  "command": "create shipment 7781",
+  "trigger": {
+    "keyword": "ORDER",
+    "command": "create shipment 7781",
+    "fullText": "order create shipment 7781"
+  }
+}
+```
+
+### Validation and routing behavior
+- Malformed outbound requests return `400` with `error: "Invalid request body"` and field details.
+- Unknown inbound keywords are logged as `unrouted` and safely acknowledged (`200`).
+- Inactive app matches are logged as `inactive` and not forwarded.
+- Outbound logs include app identity (`app` keyword) and `providerMessageId`.
+
+### Rollout / migration notes
+- **No Prisma schema migration is required** for this rollout.
+- External apps should store the generated app `apiKey` in their `APP_API_KEY` secret.
+- If you enforce strict CORS headers in custom clients, include one of supported app-key headers.
