@@ -19,8 +19,9 @@ export const adminController = {
       await emailService.sendOtp(normalizedEmail, code);
 
       return res.status(200).json({ message: 'OTP sent successfully', expiresAt });
-    } catch {
-      return res.status(500).json({ error: 'Failed to send OTP email' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send OTP email';
+      return res.status(500).json({ error: message });
     }
   },
 
