@@ -33,7 +33,13 @@ export default function AdminLoginPage() {
     } catch (error) {
       const fallback = 'Could not send OTP to the provided email.';
       if (error instanceof AxiosError) {
-        setError(error.response?.data?.error ?? fallback);
+        const backendError = error.response?.data?.error;
+        const status = error.response?.status;
+        setError(
+          backendError
+            ? `OTP send failed (${status ?? 'unknown'}): ${backendError}`
+            : `${fallback} (${error.message})`
+        );
       } else {
         setError(fallback);
       }

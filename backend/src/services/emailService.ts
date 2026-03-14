@@ -109,6 +109,8 @@ export const emailService = {
     const subject = 'Admin login OTP';
     const body = `Your admin login OTP is ${code}. It expires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
 
+    let resendFailure: string | null = null;
+
     try {
       const resendDelivered = await sendViaResend(to, code);
       if (resendDelivered) {
@@ -116,6 +118,7 @@ export const emailService = {
       }
     } catch (resendError) {
       logger.error('Resend transport failed for admin OTP email', { resendError, to });
+      resendFailure = resendError instanceof Error ? resendError.message : 'Unknown Resend error';
     }
 
     let smtpFailure: string | null = null;
@@ -142,7 +145,7 @@ export const emailService = {
     }
 
     throw new Error(
-      `Failed to send OTP email. SMTP: ${smtpFailure ?? 'not attempted'}. Sendmail: ${sendmailFailure ?? 'not attempted'}.`
+      `Failed to send OTP email. Resend: ${resendFailure ?? 'not configured or not attempted'}. SMTP: ${smtpFailure ?? 'not attempted'}. Sendmail: ${sendmailFailure ?? 'not attempted'}.`
     );
   }
 };
