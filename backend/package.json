@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "test": "WHATSAPP_PHONE_ID=test-phone WHATSAPP_TOKEN=test-token VERIFY_TOKEN=test-verify DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres tsx --test src/tests/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",

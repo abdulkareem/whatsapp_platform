@@ -13,7 +13,8 @@ export const swaggerSpec = swaggerJSDoc({
         appKey: {
           type: 'apiKey',
           in: 'header',
-          name: 'X-APP-KEY'
+          name: 'X-APP-KEY',
+          description: 'Also accepts APP_API_KEY, X-API-KEY, or Authorization: Bearer <APP_API_KEY>'
         }
       }
     },

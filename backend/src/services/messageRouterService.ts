@@ -3,6 +3,8 @@ import { prisma } from '../database/prisma';
 import { appService } from './appService';
 import { logger } from '../config/logger';
 
+type RouteStatus = 'routed' | 'unrouted' | 'inactive';
+
 export const messageRouterService = {
   normalizeKeyword(token: string): string {
     return token.replace(/[^A-Z0-9_]/gi, '').toUpperCase();
@@ -23,12 +25,15 @@ export const messageRouterService = {
     const command = this.extractCommand(message);
     const app = await appService.findByKeyword(keyword);
 
+    const status: RouteStatus = !app ? 'unrouted' : app.isActive ? 'routed' : 'inactive';
+
     logger.info('Routing inbound message', {
       mobile,
       keyword,
       command: command || null,
       matchedApp: app?.keyword ?? null,
-      appActive: app?.isActive ?? false
+      appActive: app?.isActive ?? false,
+      status
     });
 
     await prisma.messageLog.create({
@@ -37,12 +42,12 @@ export const messageRouterService = {
         message,
         direction: 'incoming',
         app: app?.keyword ?? 'UNROUTED',
-        status: app ? 'routed' : 'unrouted'
+        status
       }
     });
 
     if (!app) {
-      logger.warn('No app matched for inbound keyword', { mobile, keyword, message });
+      logger.warn('No app matched for inbound keyword', { mobile, keyword });
       return;
     }
 
@@ -61,21 +66,26 @@ export const messageRouterService = {
       create: { mobile, appId: app.id, lastMessage: message }
     });
 
-    await axios.post(app.endpoint, {
-      mobile,
-      message,
-      keyword,
-      command,
-      trigger: {
+    await axios.post(
+      app.endpoint,
+      {
+        mobile,
+        message,
         keyword,
         command,
-        fullText: message
-      }
-    }, { timeout: 8000 });
+        trigger: {
+          keyword,
+          command,
+          fullText: message
+        }
+      },
+      { timeout: 8000 }
+    );
+
     logger.info('Message forwarded to app endpoint', {
       app: app.keyword,
+      appId: app.id,
       mobile,
-      endpoint: app.endpoint,
       keyword,
       command: command || null
     });

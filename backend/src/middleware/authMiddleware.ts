@@ -15,10 +15,15 @@ declare global {
 }
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.header('X-APP-KEY');
+  const apiKey = req.header('X-APP-KEY')
+    ?? req.header('APP_API_KEY')
+    ?? req.header('X-API-KEY')
+    ?? req.header('Authorization')?.replace(/^Bearer\s+/i, '').trim();
 
   if (!apiKey) {
-    return res.status(401).json({ error: 'X-APP-KEY header is required' });
+    return res.status(401).json({
+      error: 'APP API key is required via X-APP-KEY, APP_API_KEY, X-API-KEY, or Authorization: Bearer <APP_API_KEY>'
+    });
   }
 
   const app = await appService.findByApiKey(apiKey);
