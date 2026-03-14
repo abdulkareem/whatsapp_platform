@@ -15,7 +15,7 @@ const envSchema = z.object({
   OTP_EXPIRY_MINUTES: z.coerce.number().default(10),
   DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
   CORS_ORIGINS: z.string().optional(),
-  ADMIN_WHATSAPP_PIN: z.string().min(4).default('123456')
+  ADMIN_WHATSAPP_PIN: z.string().regex(/^[0-9]{4}$/).default('1234')
 });
 
 const parsed = envSchema.safeParse(process.env);
