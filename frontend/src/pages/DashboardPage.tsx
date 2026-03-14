@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import StatCard from '../components/StatCard';
 import { api } from '../services/api';
-import type { AppRecord, MessageLog } from '@whatsapp-platform/shared';
+import type { AppRecord, MessageLog } from '../types/shared';
 
 export default function DashboardPage() {
   const [apps, setApps] = useState<AppRecord[]>([]);
