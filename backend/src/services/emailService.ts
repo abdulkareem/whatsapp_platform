@@ -39,17 +39,12 @@ export const emailService = {
       await sendViaSendmail(from, to, subject, body);
     } catch (error) {
       logger.error('Failed to send admin OTP email', { error, to });
-
-      if (env.NODE_ENV !== 'production') {
-        logger.warn('Falling back to console OTP delivery outside production', {
-          to,
-          code,
-          expiresInMinutes: env.OTP_EXPIRY_MINUTES
-        });
-        return;
-      }
-
-      throw new Error('Failed to send OTP email');
+      logger.warn('Falling back to console OTP delivery', {
+        to,
+        code,
+        expiresInMinutes: env.OTP_EXPIRY_MINUTES,
+        environment: env.NODE_ENV
+      });
     }
   }
 };
