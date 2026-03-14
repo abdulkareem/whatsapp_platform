@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { AxiosError } from 'axios';
 import { api } from '../services/api';
 import { auth } from '../services/auth';
 import type { AppRecord } from '../types/shared';
@@ -72,7 +73,23 @@ export default function AppManagementPage() {
       setStatus('External app connected successfully. Share the API key with your app backend.');
       setForm(initialForm);
       await loadApps();
-    } catch {
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        const statusCode = error.response?.status;
+        const backendError = error.response?.data?.error;
+
+        if (statusCode === 401 || statusCode === 403) {
+          auth.clearToken();
+          setError('Admin session expired. Please login again and reconnect your app.');
+          return;
+        }
+
+        if (backendError) {
+          setError(`Failed to connect external app: ${backendError}`);
+          return;
+        }
+      }
+
       setError('Failed to connect external app. Verify admin session and endpoint URL.');
     }
   };
@@ -99,16 +116,22 @@ export default function AppManagementPage() {
       </div>
 
       <form className="rounded-lg border bg-white p-4" onSubmit={createApp}>
+        <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          Fill this form to connect your external system. When a WhatsApp message starts with your keyword, this
+          platform forwards the message to your external endpoint.
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1">
             <span className="text-xs font-medium uppercase tracking-wide text-slate-600">App name</span>
             <input
               className="w-full rounded border px-3 py-2"
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="CRM Portal"
+              placeholder="PSMO CRM System"
               required
               value={form.name}
             />
+            <p className="text-xs text-slate-500">Human-readable name, e.g. CRM Portal or Student Helpdesk.</p>
           </label>
 
           <label className="space-y-1">
@@ -125,7 +148,10 @@ export default function AppManagementPage() {
               title="Use only uppercase letters, numbers, and underscores."
               value={form.keyword}
             />
-            <p className="text-xs text-slate-500">Used as first token in incoming message (e.g., CRM LOGIN).</p>
+            <p className="text-xs text-slate-500">
+              Routing trigger used as first token in message, e.g. keyword <strong>CRM</strong> routes message
+              <strong> CRM check my invoice</strong>.
+            </p>
           </label>
 
           <label className="space-y-1 md:col-span-2">
@@ -133,11 +159,12 @@ export default function AppManagementPage() {
             <input
               className="w-full rounded border px-3 py-2"
               onChange={(e) => setForm((prev) => ({ ...prev, endpoint: e.target.value }))}
-              placeholder="https://your-app.com/webhooks/whatsapp"
+              placeholder="https://your-backend.up.railway.app/webhooks/whatsapp"
               required
               type="url"
               value={form.endpoint}
             />
+            <p className="text-xs text-slate-500">Must be a POST webhook URL that returns HTTP 200 within 5 seconds.</p>
           </label>
 
           <label className="space-y-1">
@@ -152,6 +179,7 @@ export default function AppManagementPage() {
               type="number"
               value={form.rateLimitRpm}
             />
+            <p className="text-xs text-slate-500">Recommended: 60 (small), 100 (production), 500 (high traffic).</p>
           </label>
 
           <div className="flex items-end">
