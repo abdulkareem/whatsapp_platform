@@ -66,3 +66,16 @@ model AdminOtp {
 
   @@index([mobile, deviceId, code, used])
 }
+
+model AdminDevicePin {
+  id             Int      @id @default(autoincrement())
+  mobile         String
+  deviceId       String
+  pin            String
+  whatsappLinked Boolean  @default(false)
+  lastVerifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([mobile, deviceId])
+}
