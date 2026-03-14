@@ -60,11 +60,71 @@ const sendViaSmtp = async (from: string, to: string, subject: string, text: stri
   });
 };
 
+function getResendApiKey(): string | null {
+  const apiKey = env.RESEND_API_KEY;
+  return apiKey ?? null;
+}
+
+const sendViaResend = async (to: string, otp: string) => {
+  const apiKey = getResendApiKey();
+
+  if (!apiKey) {
+    return false;
+  }
+
+  const from = env.RESEND_FROM_EMAIL ?? env.SMTP_FROM_EMAIL ?? `Aureliv <${env.ADMIN_EMAIL}>`;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: 'Admin login OTP',
+      html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5">
+            <h2>Aureliv Verification Code</h2>
+            <p>Your one-time password is:</p>
+            <h1 style="letter-spacing: 6px">${otp}</h1>
+            <p>This OTP is valid for ${env.OTP_EXPIRY_MINUTES} minutes.</p>
+            <p style="font-size: 12px; color: #666">
+              If you did not request this, please ignore this email.
+            </p>
+          </div>
+        `
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`status=${response.status} body=${errorText}`);
+  }
+
+  if (env.NODE_ENV !== 'production') {
+    const result = await response.json();
+    logger.info('Email OTP sent via Resend', { id: result?.id, to });
+  }
+
+  return true;
+};
+
 export const emailService = {
   async sendOtp(to: string, code: string) {
     const from = env.SMTP_FROM_EMAIL ?? env.ADMIN_EMAIL;
     const subject = 'Admin login OTP';
     const body = `Your admin login OTP is ${code}. It expires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
+
+    try {
+      const resendDelivered = await sendViaResend(to, code);
+      if (resendDelivered) {
+        return;
+      }
+    } catch (resendError) {
+      logger.error('Resend transport failed for admin OTP email', { resendError, to });
+    }
 
     let smtpFailure: string | null = null;
     let sendmailFailure: string | null = null;
