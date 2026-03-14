@@ -4,6 +4,11 @@ import { logger } from '../config/logger';
 import { whatsappService } from '../services/whatsappService';
 import { prisma } from '../database/prisma';
 
+if (!env.REDIS_URL) {
+  logger.warn('REDIS_URL not configured. Broadcast worker is disabled.');
+  process.exit(0);
+}
+
 const redisUrl = new URL(env.REDIS_URL);
 
 const connection = {
