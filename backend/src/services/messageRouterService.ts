@@ -8,8 +8,14 @@ export const messageRouterService = {
     return message.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
   },
 
+  extractCommand(message: string): string {
+    const [, ...rest] = message.trim().split(/\s+/);
+    return rest.join(' ').trim();
+  },
+
   async routeIncomingMessage(mobile: string, message: string): Promise<void> {
     const keyword = this.extractKeyword(message);
+    const command = this.extractCommand(message);
     const app = await appService.findByKeyword(keyword);
 
     await prisma.messageLog.create({
@@ -33,7 +39,17 @@ export const messageRouterService = {
       create: { mobile, appId: app.id, lastMessage: message }
     });
 
-    await axios.post(app.endpoint, { mobile, message }, { timeout: 8000 });
+    await axios.post(app.endpoint, {
+      mobile,
+      message,
+      keyword,
+      command,
+      trigger: {
+        keyword,
+        command,
+        fullText: message
+      }
+    }, { timeout: 8000 });
     logger.info('Message forwarded to app endpoint', { app: app.keyword, mobile, endpoint: app.endpoint });
   }
 };
