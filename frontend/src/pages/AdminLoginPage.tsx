@@ -1,11 +1,10 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { api, normalizedBaseUrl } from '../services/api';
+import { api } from '../services/api';
 import { auth } from '../services/auth';
 
 const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim().toLowerCase() || 'abdulkareem.t@gmail.com';
-const API_BASE_URL = normalizedBaseUrl;
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -32,7 +31,7 @@ export default function AdminLoginPage() {
       await api.post('/api/admin/send-otp', { email: normalizedEmail });
       setOtpSent(true);
     } catch (error) {
-      const fallback = `Could not send OTP to the provided email (backend: ${API_BASE_URL}).`;
+      const fallback = 'Could not send OTP to the provided email.';
       if (error instanceof AxiosError) {
         const backendError = error.response?.data?.error;
         const status = error.response?.status;
@@ -68,7 +67,7 @@ export default function AdminLoginPage() {
     try {
       const response = await api.post('/api/admin/verify-otp', { email: normalizedEmail, otp });
       auth.setToken(response.data.token);
-      navigate('/');
+      navigate('/dashboard');
     } catch {
       setError('Invalid or expired OTP.');
     } finally {
@@ -80,7 +79,6 @@ export default function AdminLoginPage() {
     <div className="mx-auto mt-20 max-w-md rounded-lg border bg-white p-6 shadow-sm">
       <h1 className="mb-2 text-2xl font-bold">Admin Login</h1>
       <p className="mb-1 text-sm text-slate-600">Login with admin email. OTP will be sent to your email.</p>
-      <p className="mb-4 text-xs text-slate-500">Backend API: {API_BASE_URL}</p>
 
       <form className="space-y-4" onSubmit={submit}>
         <div>
