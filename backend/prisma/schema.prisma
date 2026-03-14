@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model App {
+  id            Int           @id @default(autoincrement())
+  name          String
+  keyword       String        @unique
+  endpoint      String
+  apiKey        String        @unique
+  rateLimitRpm  Int           @default(100)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  messages      MessageLog[]
+  conversations Conversation[]
+}
+
+model MessageLog {
+  id               Int       @id @default(autoincrement())
+  mobile           String
+  message          String
+  direction        String
+  app              String
+  status           String    @default("queued")
+  providerMessageId String?
+  createdAt        DateTime  @default(now())
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  mobile    String
+  code      String
+  app       String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Conversation {
+  id         Int      @id @default(autoincrement())
+  mobile     String
+  appId      Int
+  lastMessage String
+  updatedAt  DateTime @updatedAt
+  app        App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([mobile, appId])
+}
