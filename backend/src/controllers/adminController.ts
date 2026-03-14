@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { adminAuthService } from '../services/adminAuthService';
 import { emailService } from '../services/emailService';
+import { logger } from '../config/logger';
 
 export const adminController = {
   async sendOtp(req: Request, res: Response) {
@@ -21,6 +22,11 @@ export const adminController = {
       return res.status(200).json({ message: 'OTP sent successfully', expiresAt });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to send OTP email';
+      logger.error('Admin OTP send failed', {
+        email,
+        errorMessage: message,
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       return res.status(500).json({ error: message });
     }
   },
