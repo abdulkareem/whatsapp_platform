@@ -66,25 +66,22 @@ export const emailService = {
     const subject = 'Admin login OTP';
     const body = `Your admin login OTP is ${code}. It expires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
 
-    try {
-      if (canUseSmtp) {
-        try {
-          await sendViaSmtp(from, to, subject, body);
-          return;
-        } catch (smtpError) {
-          logger.error('SMTP transport failed for admin OTP email', { smtpError, to });
-        }
+    if (canUseSmtp) {
+      try {
+        await sendViaSmtp(from, to, subject, body);
+        return;
+      } catch (smtpError) {
+        logger.error('SMTP transport failed for admin OTP email', { smtpError, to });
       }
-
-      await sendViaSendmail(from, to, subject, body);
-    } catch (error) {
-      logger.error('Failed to send admin OTP email', { error, to });
-      logger.warn('Falling back to console OTP delivery', {
-        to,
-        code,
-        expiresInMinutes: env.OTP_EXPIRY_MINUTES,
-        environment: env.NODE_ENV
-      });
     }
+
+    try {
+      await sendViaSendmail(from, to, subject, body);
+      return;
+    } catch (sendmailError) {
+      logger.error('Sendmail transport failed for admin OTP email', { sendmailError, to });
+    }
+
+    throw new Error('No email transport succeeded for admin OTP delivery');
   }
 };
