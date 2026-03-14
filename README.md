@@ -43,7 +43,7 @@ npm run lint
 
 ### Railway (backend + worker)
 Use `backend/railway.json` or equivalent Railway service commands:
-- Build: `npm ci && npm run build -w @whatsapp-platform/backend`
+- Build: `npm run build -w @whatsapp-platform/backend`
 - Start API: `npm run start -w @whatsapp-platform/backend`
 - Start worker: `npm run worker -w @whatsapp-platform/backend`
 
@@ -57,3 +57,9 @@ Use `backend/railway.json` or equivalent Railway service commands:
 GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + builds for:
 - backend
 - frontend
+
+
+## Admin login
+
+Set `ADMIN_WHATSAPP_PIN` in backend environment and login in the frontend using that PIN.
+Use App Management to connect external apps (keyword + endpoint) and then consume the generated app API key from your external service.

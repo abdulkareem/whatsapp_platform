@@ -8,6 +8,7 @@ import { loggerMiddleware } from './middleware/loggerMiddleware';
 import webhookRoutes from './routes/webhookRoutes';
 import messageRoutes from './routes/messageRoutes';
 import appRoutes from './routes/appRoutes';
+import adminRoutes from './routes/adminRoutes';
 import broadcastRoutes from './routes/broadcastRoutes';
 import { swaggerSpec } from './config/swagger';
 import { authMiddleware } from './middleware/authMiddleware';
@@ -33,6 +34,7 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/webhook', webhookRoutes);
 app.use('/api/messages', messageRoutes);
 app.post('/api/otp/send', authMiddleware, apiRateLimiter, messageController.sendOtp);
+app.use('/api/admin', adminRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/broadcast', broadcastRoutes);
 
