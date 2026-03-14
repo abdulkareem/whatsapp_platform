@@ -16,11 +16,11 @@ export const adminAuthService = {
     const code = generateOTP(6);
     const expiresAt = addMinutes(new Date(), env.OTP_EXPIRY_MINUTES);
 
-    await prisma.adminOtp.create({
+    await prisma.otp.create({
       data: {
         mobile: normalizedEmail,
-        deviceId: normalizedEmail,
         code,
+        app: 'admin',
         expiresAt
       }
     });
@@ -31,10 +31,11 @@ export const adminAuthService = {
   async verifyOtp({ email, otp }: { email: string; otp: string }) {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const record = await prisma.adminOtp.findFirst({
+    const record = await prisma.otp.findFirst({
       where: {
         mobile: normalizedEmail,
         code: otp,
+        app: 'admin',
         used: false,
         expiresAt: { gt: new Date() }
       },
@@ -45,7 +46,7 @@ export const adminAuthService = {
       return null;
     }
 
-    await prisma.adminOtp.update({ where: { id: record.id }, data: { used: true } });
+    await prisma.otp.update({ where: { id: record.id }, data: { used: true } });
 
     return this.issueToken();
   },
