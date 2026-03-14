@@ -15,6 +15,7 @@ export interface MessageLog {
   direction: string;
   app: string;
   status: string;
+  providerMessageId?: string | null;
   createdAt: string;
 }
 
