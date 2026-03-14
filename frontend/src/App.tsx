@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import AppManagementPage from './pages/AppManagementPage';
@@ -55,7 +56,9 @@ function AppLayout() {
 }
 
 export default function App() {
-  const loggedIn = auth.isLoggedIn();
+  const [loggedIn, setLoggedIn] = useState(() => auth.isLoggedIn());
+
+  useEffect(() => auth.subscribe(() => setLoggedIn(auth.isLoggedIn())), []);
 
   return (
     <Routes>

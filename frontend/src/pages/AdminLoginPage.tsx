@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
     try {
       const response = await api.post('/api/admin/verify-otp', { email: normalizedEmail, otp });
       auth.setToken(response.data.token);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch {
       setError('Invalid or expired OTP.');
     } finally {

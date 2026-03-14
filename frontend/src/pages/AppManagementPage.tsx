@@ -70,7 +70,7 @@ export default function AppManagementPage() {
         { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
       );
 
-      setStatus('External app connected successfully. Share the API key with your app backend.');
+      setStatus('External app connected successfully. Copy APP_API_KEY format for your backend, messaging flows, and AI chatbot integration.');
       setForm(initialForm);
       await loadApps();
     } catch (error) {
@@ -95,8 +95,10 @@ export default function AppManagementPage() {
   };
 
   const copyApiKey = async (id: number, apiKey: string) => {
+    const backendEnvVariable = `APP_API_KEY=${apiKey}`;
+
     try {
-      await navigator.clipboard.writeText(apiKey);
+      await navigator.clipboard.writeText(backendEnvVariable);
       setCopiedApiKeyId(id);
       setTimeout(() => {
         setCopiedApiKeyId((current) => (current === id ? null : current));
@@ -228,7 +230,7 @@ export default function AppManagementPage() {
                 <td className="p-3">
                   <div className="flex items-center gap-2">
                     <code className="max-w-[180px] truncate rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
-                      {app.apiKey}
+                      {`APP_API_KEY=${app.apiKey}`}
                     </code>
                     <button
                       className="rounded border px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
