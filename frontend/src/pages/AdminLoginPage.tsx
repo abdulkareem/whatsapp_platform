@@ -5,20 +5,21 @@ import { auth } from '../services/auth';
 
 const ADMIN_NUMBER = '9747917623';
 const BUSINESS_NUMBER = '9744917623';
-const WHATSAPP_VERIFY_URL = `https://wa.me/${BUSINESS_NUMBER}?text=${encodeURIComponent('hi')}`;
 
 export default function AdminLoginPage() {
   const [mobile, setMobile] = useState('');
-  const [pin, setPin] = useState('');
+  const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const deviceId = auth.getOrCreateDeviceId();
   const normalizedMobile = useMemo(() => mobile.replace(/\D/g, ''), [mobile]);
   const isAdminNumber = normalizedMobile === ADMIN_NUMBER;
+  const whatsappVerifyUrl = `https://wa.me/${BUSINESS_NUMBER}?text=${encodeURIComponent(`hi ${deviceId}`)}`;
 
   const openWhatsAppVerification = () => {
-    window.open(WHATSAPP_VERIFY_URL, '_blank', 'noopener,noreferrer');
+    window.open(whatsappVerifyUrl, '_blank', 'noopener,noreferrer');
   };
 
   const submit = async (event: FormEvent) => {
@@ -33,11 +34,15 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/api/admin/login', { pin });
+      const response = await api.post('/api/admin/verify-otp', {
+        mobile: normalizedMobile,
+        otp,
+        deviceId
+      });
       auth.setToken(response.data.token);
       navigate('/');
     } catch {
-      setError('Invalid 4-digit PIN. Send "hi" to the business WhatsApp and use the received PIN.');
+      setError('Invalid or expired OTP. Send "hi" using Verify button and enter the latest 6-digit OTP.');
     } finally {
       setLoading(false);
     }
@@ -47,8 +52,8 @@ export default function AdminLoginPage() {
     <div className="mx-auto mt-20 max-w-md rounded-lg border bg-white p-6 shadow-sm">
       <h1 className="mb-2 text-2xl font-bold">Admin Login</h1>
       <p className="mb-4 text-sm text-slate-600">
-        Enter the admin WhatsApp number first. Only {ADMIN_NUMBER} can login. Use Verify to open WhatsApp,
-        send <strong>hi</strong> to {BUSINESS_NUMBER}, then login with the 4-digit PIN you receive.
+        Enter the admin WhatsApp number first. Only {ADMIN_NUMBER} can login. Tap Verify to open WhatsApp,
+        send <strong>hi {deviceId}</strong> to {BUSINESS_NUMBER}, then use the received 6-digit OTP.
       </p>
 
       <form className="space-y-4" onSubmit={submit}>
@@ -74,6 +79,10 @@ export default function AdminLoginPage() {
 
         {isAdminNumber ? (
           <>
+            <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+              Device ID: <span className="font-mono">{deviceId}</span>
+            </div>
+
             <button
               className="w-full rounded border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-800"
               onClick={openWhatsAppVerification}
@@ -83,20 +92,20 @@ export default function AdminLoginPage() {
             </button>
 
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="pin">
-                4-digit PIN
+              <label className="mb-1 block text-sm font-medium" htmlFor="otp">
+                6-digit OTP
               </label>
               <input
-                id="pin"
+                id="otp"
                 className="w-full rounded border px-3 py-2"
                 inputMode="numeric"
-                maxLength={4}
-                minLength={4}
-                onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
-                pattern="[0-9]{4}"
+                maxLength={6}
+                minLength={6}
+                onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                pattern="[0-9]{6}"
                 required
                 type="password"
-                value={pin}
+                value={otp}
               />
             </div>
 
@@ -104,7 +113,7 @@ export default function AdminLoginPage() {
               className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Login'}
+              {loading ? 'Verifying...' : 'Login'}
             </button>
           </>
         ) : null}

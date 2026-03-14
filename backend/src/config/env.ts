@@ -14,7 +14,6 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1).optional(),
   WHATSAPP_PHONE_ID: z.string().min(1),
   WHATSAPP_TOKEN: z.string().min(1),
   VERIFY_TOKEN: z.string().min(1).default('Kareem@123'),
@@ -22,7 +21,7 @@ const envSchema = z.object({
   OTP_EXPIRY_MINUTES: z.coerce.number().default(10),
   DEFAULT_RATE_LIMIT_RPM: z.coerce.number().default(100),
   CORS_ORIGINS: z.string().optional(),
-  ADMIN_WHATSAPP_PIN: z.string().regex(/^[0-9]{4}$/).default('1234')
+  ADMIN_WHATSAPP_NUMBER: z.string().min(6).default('9747917623')
 });
 
 const parsed = envSchema.safeParse(rawEnv);
