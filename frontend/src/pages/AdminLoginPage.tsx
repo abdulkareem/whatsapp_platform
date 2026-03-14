@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { auth } from '../services/auth';
 
-const ADMIN_EMAIL = 'abdulkareem.t@gmail.com';
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim().toLowerCase() || 'abdulkareem.t@gmail.com';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');

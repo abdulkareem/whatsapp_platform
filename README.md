@@ -61,10 +61,11 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs install + lint + build
 
 ## Admin login
 
-- Admin email login is restricted to `abdulkareem.t@gmail.com`.
+- Admin email login is restricted to `ADMIN_EMAIL` on the backend and `VITE_ADMIN_EMAIL` on the frontend (defaults to `abdulkareem.t@gmail.com` if omitted).
 - Click **Verify** on the login page to send a 6-digit OTP to that email.
 - Configure `SMTP_FROM_EMAIL` for sender identity.
 - For Zoho SMTP, set `SMTP_HOST=smtp.zoho.com`, `SMTP_PORT=587`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_SECURE=false` (STARTTLS on port 587).
+- Supported aliases are also accepted (`SMTP_FROM`, `SMTP_SERVER`, `SMTP_SERVER_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SSL`, `ADMIN_LOGIN_EMAIL`) to simplify Railway variable naming.
 - If SMTP variables are not provided, the service falls back to a local `sendmail` binary.
 - Enter the OTP and submit to access the dashboard.
 
