@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { api } from '../services/api';
 import { auth } from '../services/auth';
 import type { AppRecord } from '../types/shared';
@@ -17,10 +17,14 @@ const initialForm: AppFormState = {
   rateLimitRpm: '100'
 };
 
+const keywordPattern = /^[A-Z0-9_]+$/;
+
 export default function AppManagementPage() {
   const [apps, setApps] = useState<AppRecord[]>([]);
   const [form, setForm] = useState<AppFormState>(initialForm);
   const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedApiKeyId, setCopiedApiKeyId] = useState<number | null>(null);
 
   const loadApps = async () => {
     const response = await api.get('/api/apps');
@@ -31,9 +35,25 @@ export default function AppManagementPage() {
     void loadApps();
   }, []);
 
+  const canSubmit = useMemo(() => {
+    const trimmedName = form.name.trim();
+    const trimmedKeyword = form.keyword.trim();
+    const trimmedEndpoint = form.endpoint.trim();
+    const normalizedRateLimit = Number(form.rateLimitRpm);
+
+    return (
+      Boolean(trimmedName) &&
+      Boolean(trimmedEndpoint) &&
+      keywordPattern.test(trimmedKeyword) &&
+      Number.isInteger(normalizedRateLimit) &&
+      normalizedRateLimit > 0
+    );
+  }, [form]);
+
   const createApp = async (event: FormEvent) => {
     event.preventDefault();
     setStatus(null);
+    setError(null);
 
     try {
       const token = auth.getToken();
@@ -41,9 +61,9 @@ export default function AppManagementPage() {
       await api.post(
         '/api/apps',
         {
-          name: form.name,
-          keyword: form.keyword,
-          endpoint: form.endpoint,
+          name: form.name.trim(),
+          keyword: form.keyword.trim().toUpperCase(),
+          endpoint: form.endpoint.trim(),
           rateLimitRpm: Number(form.rateLimitRpm)
         },
         { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
@@ -53,7 +73,19 @@ export default function AppManagementPage() {
       setForm(initialForm);
       await loadApps();
     } catch {
-      setStatus('Failed to connect external app. Verify admin session and endpoint URL.');
+      setError('Failed to connect external app. Verify admin session and endpoint URL.');
+    }
+  };
+
+  const copyApiKey = async (id: number, apiKey: string) => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopiedApiKeyId(id);
+      setTimeout(() => {
+        setCopiedApiKeyId((current) => (current === id ? null : current));
+      }, 1500);
+    } catch {
+      setError('Unable to copy API key. Please copy manually.');
     }
   };
 
@@ -62,47 +94,80 @@ export default function AppManagementPage() {
       <div>
         <h1 className="mb-2 text-2xl font-bold">App Management</h1>
         <p className="text-sm text-slate-600">
-          Connect external applications by registering a routing keyword and webhook endpoint.
+          Register partner apps with a routing keyword and secured webhook endpoint.
         </p>
       </div>
 
-      <form className="grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2" onSubmit={createApp}>
-        <input
-          className="rounded border px-3 py-2"
-          onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-          placeholder="App name (e.g. CRM Portal)"
-          required
-          value={form.name}
-        />
-        <input
-          className="rounded border px-3 py-2"
-          onChange={(e) => setForm((prev) => ({ ...prev, keyword: e.target.value.toUpperCase() }))}
-          placeholder="Keyword (e.g. CRM)"
-          required
-          value={form.keyword}
-        />
-        <input
-          className="rounded border px-3 py-2 md:col-span-2"
-          onChange={(e) => setForm((prev) => ({ ...prev, endpoint: e.target.value }))}
-          placeholder="External endpoint (https://your-app.com/webhooks/whatsapp)"
-          required
-          type="url"
-          value={form.endpoint}
-        />
-        <input
-          className="rounded border px-3 py-2"
-          min={1}
-          onChange={(e) => setForm((prev) => ({ ...prev, rateLimitRpm: e.target.value }))}
-          placeholder="Rate limit rpm"
-          type="number"
-          value={form.rateLimitRpm}
-        />
-        <button className="rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white" type="submit">
-          Connect App
-        </button>
+      <form className="rounded-lg border bg-white p-4" onSubmit={createApp}>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-600">App name</span>
+            <input
+              className="w-full rounded border px-3 py-2"
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="CRM Portal"
+              required
+              value={form.name}
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-600">Routing keyword</span>
+            <input
+              className="w-full rounded border px-3 py-2 uppercase"
+              maxLength={24}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, keyword: e.target.value.toUpperCase().replace(/\s+/g, '') }))
+              }
+              pattern="[A-Z0-9_]+"
+              placeholder="CRM"
+              required
+              title="Use only uppercase letters, numbers, and underscores."
+              value={form.keyword}
+            />
+            <p className="text-xs text-slate-500">Used as first token in incoming message (e.g., CRM LOGIN).</p>
+          </label>
+
+          <label className="space-y-1 md:col-span-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-600">Webhook endpoint</span>
+            <input
+              className="w-full rounded border px-3 py-2"
+              onChange={(e) => setForm((prev) => ({ ...prev, endpoint: e.target.value }))}
+              placeholder="https://your-app.com/webhooks/whatsapp"
+              required
+              type="url"
+              value={form.endpoint}
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-600">Rate limit (requests/min)</span>
+            <input
+              className="w-full rounded border px-3 py-2"
+              min={1}
+              onChange={(e) => setForm((prev) => ({ ...prev, rateLimitRpm: e.target.value }))}
+              placeholder="100"
+              required
+              step={1}
+              type="number"
+              value={form.rateLimitRpm}
+            />
+          </label>
+
+          <div className="flex items-end">
+            <button
+              className="w-full rounded bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={!canSubmit}
+              type="submit"
+            >
+              Connect App
+            </button>
+          </div>
+        </div>
       </form>
 
-      {status ? <p className="text-sm text-slate-700">{status}</p> : null}
+      {status ? <p className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{status}</p> : null}
+      {error ? <p className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
 
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="min-w-full text-sm">
@@ -112,6 +177,7 @@ export default function AppManagementPage() {
               <th className="p-3 text-left">Keyword</th>
               <th className="p-3 text-left">Endpoint</th>
               <th className="p-3 text-left">Rate Limit</th>
+              <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">API Key</th>
             </tr>
           </thead>
@@ -120,9 +186,31 @@ export default function AppManagementPage() {
               <tr key={app.id} className="border-t align-top">
                 <td className="p-3">{app.name}</td>
                 <td className="p-3 font-semibold">{app.keyword}</td>
-                <td className="p-3">{app.endpoint}</td>
+                <td className="p-3 text-slate-700">{app.endpoint}</td>
                 <td className="p-3">{app.rateLimitRpm}/min</td>
-                <td className="p-3 font-mono text-xs">{app.apiKey}</td>
+                <td className="p-3">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                      app.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {app.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    <code className="max-w-[180px] truncate rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">
+                      {app.apiKey}
+                    </code>
+                    <button
+                      className="rounded border px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => void copyApiKey(app.id, app.apiKey)}
+                      type="button"
+                    >
+                      {copiedApiKeyId === app.id ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
