@@ -66,13 +66,19 @@ export const emailService = {
     const subject = 'Admin login OTP';
     const body = `Your admin login OTP is ${code}. It expires in ${env.OTP_EXPIRY_MINUTES} minutes.`;
 
+    let smtpFailure: string | null = null;
+    let sendmailFailure: string | null = null;
+
     if (canUseSmtp) {
       try {
         await sendViaSmtp(from, to, subject, body);
         return;
       } catch (smtpError) {
         logger.error('SMTP transport failed for admin OTP email', { smtpError, to });
+        smtpFailure = smtpError instanceof Error ? smtpError.message : 'Unknown SMTP error';
       }
+    } else {
+      smtpFailure = 'SMTP is not fully configured';
     }
 
     try {
@@ -80,8 +86,11 @@ export const emailService = {
       return;
     } catch (sendmailError) {
       logger.error('Sendmail transport failed for admin OTP email', { sendmailError, to });
+      sendmailFailure = sendmailError instanceof Error ? sendmailError.message : 'Unknown sendmail error';
     }
 
-    throw new Error('No email transport succeeded for admin OTP delivery');
+    throw new Error(
+      `Failed to send OTP email. SMTP: ${smtpFailure ?? 'not attempted'}. Sendmail: ${sendmailFailure ?? 'not attempted'}.`
+    );
   }
 };

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AxiosError } from 'axios';
 import { api } from '../services/api';
 import { auth } from '../services/auth';
 
@@ -29,8 +30,13 @@ export default function AdminLoginPage() {
     try {
       await api.post('/api/admin/send-otp', { email: normalizedEmail });
       setOtpSent(true);
-    } catch {
-      setError('Could not send OTP to the provided email.');
+    } catch (error) {
+      const fallback = 'Could not send OTP to the provided email.';
+      if (error instanceof AxiosError) {
+        setError(error.response?.data?.error ?? fallback);
+      } else {
+        setError(fallback);
+      }
     } finally {
       setSendingOtp(false);
     }
