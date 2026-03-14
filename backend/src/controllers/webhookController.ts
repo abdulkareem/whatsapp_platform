@@ -6,7 +6,7 @@ import type { WhatsAppInboundPayload } from '../types/shared';
 import { adminAuthService } from '../services/adminAuthService';
 import { whatsappService } from '../services/whatsappService';
 
-const adminHiRegex = /^hi(?:\s+([a-zA-Z0-9_-]{6,64}))?$/i;
+const adminHiRegex = /^hi(?:\b|\s|$)/i;
 
 export const webhookController = {
   verifyWebhook(req: Request, res: Response) {
@@ -44,12 +44,10 @@ export const webhookController = {
       logger.info('Inbound WhatsApp message received', { from: mobile, text: message });
 
       try {
-        const adminHiMatch = message.match(adminHiRegex);
-        if (adminAuthService.isAdminMobile(mobile) && adminHiMatch) {
-          const providedDeviceId = adminHiMatch[1];
-          const deviceId = providedDeviceId ?? 'unknown-device';
-          const { code } = await adminAuthService.issueWhatsAppOtp(mobile, deviceId);
-          const otpMessage = `Your OTP for login is ${code}. Enter this 6-digit pin to continue.`;
+        const isAdminHi = adminHiRegex.test(message.toLowerCase());
+        if (adminAuthService.isAdminMobile(mobile) && isAdminHi) {
+          const { code } = await adminAuthService.issueWhatsAppOtp(mobile);
+          const otpMessage = `Your login code is ${code}. Use this 6-digit PIN on the admin login page.`;
           await whatsappService.sendMessage(mobile, otpMessage);
           continue;
         }

@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
   const deviceId = auth.getOrCreateDeviceId();
   const normalizedMobile = useMemo(() => mobile.replace(/\D/g, ''), [mobile]);
   const isAdminNumber = normalizedMobile === ADMIN_NUMBER;
-  const whatsappVerifyUrl = `https://wa.me/${BUSINESS_NUMBER}?text=${encodeURIComponent(`hi ${deviceId}`)}`;
+  const whatsappVerifyUrl = `https://wa.me/${BUSINESS_NUMBER}?text=${encodeURIComponent('hi')}`;
 
   const openWhatsAppVerification = () => {
     window.open(whatsappVerifyUrl, '_blank', 'noopener,noreferrer');
@@ -109,17 +109,12 @@ export default function AdminLoginPage() {
 
         {isAdminNumber ? (
           <>
-            <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
-              Device ID: <span className="font-mono">{deviceId}</span>
-            </div>
-
             {checkingLoginFlow ? <p className="text-xs text-slate-500">Checking login mode...</p> : null}
 
             {requiresWhatsappVerification ? (
               <>
                 <div className="rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
-                  New device detected. Send <strong>hi {deviceId}</strong> to {BUSINESS_NUMBER} on WhatsApp to get
-                  OTP.
+                  New device detected. Send <strong>hi</strong> to {BUSINESS_NUMBER} on WhatsApp to get OTP.
                 </div>
                 <button
                   className="w-full rounded border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-800"
