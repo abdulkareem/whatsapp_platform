@@ -33,17 +33,36 @@ export const webhookController = {
     for (const item of messages) {
       const mobile = item.from;
       const message = item.text?.body?.trim();
+      const messageId = (item as { id?: string }).id;
+      const messageType = (item as { type?: string }).type;
 
       if (!mobile || !message) {
+        logger.warn('Skipping inbound WhatsApp payload without mobile or text body', {
+          messageId,
+          messageType,
+          hasMobile: Boolean(mobile),
+          hasTextBody: Boolean(message)
+        });
         continue;
       }
 
-      logger.info('Inbound WhatsApp message received', { from: mobile, text: message });
+      logger.info('Inbound WhatsApp message received', {
+        from: mobile,
+        text: message,
+        messageId,
+        messageType
+      });
 
       try {
         await messageRouterService.routeIncomingMessage(mobile, message);
       } catch (error) {
-        logger.error('Failed to route inbound message', { error, mobile, message });
+        logger.error('Failed to route inbound message', {
+          error,
+          mobile,
+          message,
+          messageId,
+          messageType
+        });
       }
     }
 

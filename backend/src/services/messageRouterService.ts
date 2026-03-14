@@ -23,6 +23,14 @@ export const messageRouterService = {
     const command = this.extractCommand(message);
     const app = await appService.findByKeyword(keyword);
 
+    logger.info('Routing inbound message', {
+      mobile,
+      keyword,
+      command: command || null,
+      matchedApp: app?.keyword ?? null,
+      appActive: app?.isActive ?? false
+    });
+
     await prisma.messageLog.create({
       data: {
         mobile,
@@ -33,8 +41,17 @@ export const messageRouterService = {
       }
     });
 
-    if (!app || !app.isActive) {
-      logger.warn('No active app matched for message', { mobile, keyword });
+    if (!app) {
+      logger.warn('No app matched for inbound keyword', { mobile, keyword, message });
+      return;
+    }
+
+    if (!app.isActive) {
+      logger.warn('Matched app is inactive; inbound message not forwarded', {
+        mobile,
+        keyword,
+        app: app.keyword
+      });
       return;
     }
 
@@ -55,6 +72,12 @@ export const messageRouterService = {
         fullText: message
       }
     }, { timeout: 8000 });
-    logger.info('Message forwarded to app endpoint', { app: app.keyword, mobile, endpoint: app.endpoint });
+    logger.info('Message forwarded to app endpoint', {
+      app: app.keyword,
+      mobile,
+      endpoint: app.endpoint,
+      keyword,
+      command: command || null
+    });
   }
 };
