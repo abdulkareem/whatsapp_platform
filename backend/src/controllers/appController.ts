@@ -31,6 +31,33 @@ export const appController = {
     return res.status(201).json(app);
   },
 
+  async updateStatus(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const { isActive } = req.body as { isActive?: boolean };
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id param must be a positive integer' });
+    }
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ error: 'isActive must be a boolean' });
+    }
+
+    const app = await appService.updateStatus(id, isActive);
+    return res.status(200).json(app);
+  },
+
+  async remove(req: Request, res: Response) {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id param must be a positive integer' });
+    }
+
+    await appService.deleteApp(id);
+    return res.status(204).send();
+  },
+
   async rotateApiKey(req: Request, res: Response) {
     const id = Number(req.params.id);
 

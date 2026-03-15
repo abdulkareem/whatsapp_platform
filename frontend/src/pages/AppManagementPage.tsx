@@ -108,6 +108,61 @@ export default function AppManagementPage() {
     }
   };
 
+  const handleStatusToggle = async (app: AppRecord) => {
+    setStatus(null);
+    setError(null);
+
+    try {
+      const token = auth.getToken();
+      const nextStatus = !app.isActive;
+
+      await api.patch(
+        `/api/apps/${app.id}/status`,
+        { isActive: nextStatus },
+        { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
+      );
+
+      setStatus(`${app.name} is now ${nextStatus ? 'active' : 'inactive'}.`);
+      await loadApps();
+    } catch (error) {
+      if (error instanceof AxiosError && (error.response?.status === 401 || error.response?.status === 403)) {
+        auth.clearToken();
+        setError('Admin session expired. Please login again.');
+        return;
+      }
+
+      setError(`Failed to update status for ${app.name}.`);
+    }
+  };
+
+  const handleDeleteApp = async (app: AppRecord) => {
+    const confirmed = window.confirm(`Delete ${app.name}? This action cannot be undone.`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setStatus(null);
+    setError(null);
+
+    try {
+      const token = auth.getToken();
+
+      await api.delete(`/api/apps/${app.id}`, { headers: { 'X-ADMIN-TOKEN': token ?? '' } });
+
+      setStatus(`${app.name} has been deleted.`);
+      await loadApps();
+    } catch (error) {
+      if (error instanceof AxiosError && (error.response?.status === 401 || error.response?.status === 403)) {
+        auth.clearToken();
+        setError('Admin session expired. Please login again.');
+        return;
+      }
+
+      setError(`Failed to delete ${app.name}.`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -209,6 +264,7 @@ export default function AppManagementPage() {
               <th className="p-3 text-left">Rate Limit</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">API Key</th>
+              <th className="p-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -238,6 +294,24 @@ export default function AppManagementPage() {
                       type="button"
                     >
                       {copiedApiKeyId === app.id ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </td>
+                <td className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded border px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => void handleStatusToggle(app)}
+                      type="button"
+                    >
+                      {app.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      className="rounded border border-rose-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                      onClick={() => void handleDeleteApp(app)}
+                      type="button"
+                    >
+                      Delete
                     </button>
                   </div>
                 </td>
