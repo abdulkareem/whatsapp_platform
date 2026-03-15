@@ -40,10 +40,14 @@ export interface WhatsAppInboundPayload {
           type?: string;
           from?: string;
           text?: { body?: string };
-          button?: { text?: string };
+          button?: { text?: string; payload?: string };
           interactive?: {
             button_reply?: { title?: string };
             list_reply?: { title?: string };
+            nfm_reply?: {
+              body?: string;
+              response_json?: string;
+            };
           };
           image?: { caption?: string };
           video?: { caption?: string };
@@ -58,10 +62,14 @@ export interface WhatsAppInboundPayload {
     type?: string;
     from?: string;
     text?: { body?: string };
-    button?: { text?: string };
+    button?: { text?: string; payload?: string };
     interactive?: {
       button_reply?: { title?: string };
       list_reply?: { title?: string };
+      nfm_reply?: {
+        body?: string;
+        response_json?: string;
+      };
     };
     image?: { caption?: string };
     video?: { caption?: string };

@@ -15,8 +15,11 @@ const extractMessageText = (item: NonNullable<WhatsAppInboundPayload['messages']
   const textCandidates = [
     item.text?.body,
     item.button?.text,
+    item.button?.payload,
     item.interactive?.button_reply?.title,
     item.interactive?.list_reply?.title,
+    item.interactive?.nfm_reply?.body,
+    item.interactive?.nfm_reply?.response_json,
     item.image?.caption,
     item.video?.caption,
     item.document?.caption
