@@ -96,7 +96,7 @@ const resolveAdminTokenSecret = () => {
 const rawEnv = {
   ...process.env,
   DATABASE_URL: resolveDatabaseUrl(),
-  WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID,
+  WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID ?? process.env.WHATSAPP_PHONE_NUMBER_ID ?? process.env.PHONE_NUMBER_ID,
   WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN ?? process.env.WHATSAPP_ACCESS_TOKEN,
   VERIFY_TOKEN: process.env.VERIFY_TOKEN ?? process.env.WHATSAPP_VERIFY_TOKEN,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? process.env.ADMIN_LOGIN_EMAIL,
