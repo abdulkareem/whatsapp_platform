@@ -28,17 +28,43 @@ export interface WhatsAppInboundPayload {
   entry?: Array<{
     changes?: Array<{
       value?: {
+        contacts?: Array<{
+          wa_id?: string;
+        }>;
+        statuses?: Array<{
+          id?: string;
+          status?: string;
+        }>;
         messages?: Array<{
           id?: string;
+          type?: string;
           from?: string;
           text?: { body?: string };
+          button?: { text?: string };
+          interactive?: {
+            button_reply?: { title?: string };
+            list_reply?: { title?: string };
+          };
+          image?: { caption?: string };
+          video?: { caption?: string };
+          document?: { caption?: string };
           timestamp?: string;
         }>;
       };
     }>;
   }>;
   messages?: Array<{
+    id?: string;
+    type?: string;
     from?: string;
     text?: { body?: string };
+    button?: { text?: string };
+    interactive?: {
+      button_reply?: { title?: string };
+      list_reply?: { title?: string };
+    };
+    image?: { caption?: string };
+    video?: { caption?: string };
+    document?: { caption?: string };
   }>;
 }
