@@ -23,14 +23,45 @@ const extractIncomingMessage = (payload) => {
   const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
   return {
+    message,
     from: message?.from,
     text: message?.text?.body,
   };
 };
 
+const formatWebhookTimestamp = () => {
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(
+    now.getHours(),
+  )}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+};
+
+const logWebhookDetails = ({ headers, payload, from, text }) => {
+  console.log("===== WHATSAPP WEBHOOK RECEIVED =====");
+  console.log(`Time: ${formatWebhookTimestamp()}`);
+  console.log(`Sender: ${from || "N/A"}`);
+  console.log(`Message: ${text || "N/A"}`);
+  console.log(`Headers: ${JSON.stringify(headers, null, 2)}`);
+  console.log(`Payload: ${JSON.stringify(payload, null, 2)}`);
+  console.log("==============");
+};
+
 export const receiveWebhook = async (req, res, next) => {
   try {
-    const { from, text } = extractIncomingMessage(req.body);
+    const { message, from, text } = extractIncomingMessage(req.body);
+
+    if (message) {
+      logWebhookDetails({
+        headers: req.headers,
+        payload: req.body,
+        from,
+        text,
+      });
+    } else {
+      console.log("Webhook event received but no user message.");
+    }
 
     if (!from || !text) {
       logger.info("webhook.ignored", {
