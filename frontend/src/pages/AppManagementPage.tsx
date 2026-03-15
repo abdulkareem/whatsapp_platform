@@ -36,6 +36,7 @@ export default function AppManagementPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedApiKeyId, setCopiedApiKeyId] = useState<number | null>(null);
+  const [busyAppId, setBusyAppId] = useState<number | null>(null);
 
   const loadApps = async () => {
     const response = await api.get('/api/apps');
@@ -152,6 +153,76 @@ export default function AppManagementPage() {
     }
   };
 
+  const toggleAppStatus = async (app: AppRecord, isActive: boolean) => {
+    setStatus(null);
+    setError(null);
+    setBusyAppId(app.id);
+
+    try {
+      const token = auth.getToken();
+      await api.patch(
+        `/api/apps/${app.id}/status`,
+        { isActive },
+        { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
+      );
+
+      setStatus(`${app.name} is now ${isActive ? 'active' : 'inactive'}.`);
+      await loadApps();
+    } catch {
+      setError(`Failed to update status for ${app.name}.`);
+    } finally {
+      setBusyAppId(null);
+    }
+  };
+
+  const deleteApp = async (app: AppRecord) => {
+    const confirmed = window.confirm(`Delete app \"${app.name}\" and revoke its API key?`);
+    if (!confirmed) return;
+
+    setStatus(null);
+    setError(null);
+    setBusyAppId(app.id);
+
+    try {
+      const token = auth.getToken();
+      await api.delete(`/api/apps/${app.id}`, {
+        headers: { 'X-ADMIN-TOKEN': token ?? '' }
+      });
+
+      setStatus(`${app.name} and its API key were deleted.`);
+      await loadApps();
+    } catch {
+      setError(`Failed to delete ${app.name}.`);
+    } finally {
+      setBusyAppId(null);
+    }
+  };
+
+  const rotateApiKey = async (app: AppRecord) => {
+    const confirmed = window.confirm(`Delete current API key for \"${app.name}\" and generate a new key?`);
+    if (!confirmed) return;
+
+    setStatus(null);
+    setError(null);
+    setBusyAppId(app.id);
+
+    try {
+      const token = auth.getToken();
+      await api.post(
+        `/api/apps/${app.id}/rotate-key`,
+        {},
+        { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
+      );
+
+      setStatus(`Old API key removed and replaced for ${app.name}.`);
+      await loadApps();
+    } catch {
+      setError(`Failed to replace API key for ${app.name}.`);
+    } finally {
+      setBusyAppId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -189,7 +260,7 @@ export default function AppManagementPage() {
       <div className="overflow-x-auto rounded-lg border bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-100">
-            <tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Keyword</th><th className="p-3 text-left">Endpoint</th><th className="p-3 text-left">Routing</th><th className="p-3 text-left">API Key</th></tr>
+            <tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Keyword</th><th className="p-3 text-left">Endpoint</th><th className="p-3 text-left">Routing</th><th className="p-3 text-left">API Key</th><th className="p-3 text-left">App Actions</th></tr>
           </thead>
           <tbody>
             {apps.map((app) => (
@@ -207,10 +278,27 @@ export default function AppManagementPage() {
                   <button className="rounded border px-2 py-1" onClick={() => void updateRoutingConfig(app)} type="button">Save Routing</button>
                 </td>
                 <td className="p-3">
-                  <div className="flex items-center gap-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <code className="max-w-[180px] truncate rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-700">{`APP_API_KEY=${app.apiKey}`}</code>
                     <button className="rounded border px-2 py-1 text-xs" onClick={() => void copyApiKey(app.id, app.apiKey)} type="button">{copiedApiKeyId === app.id ? 'Copied' : 'Copy'}</button>
                   </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="rounded border px-2 py-1 text-xs" disabled={busyAppId === app.id} onClick={() => void toggleAppStatus(app, !app.isActive)} type="button">
+                      {app.isActive ? 'Deactivate API Key' : 'Activate API Key'}
+                    </button>
+                    <button className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700" disabled={busyAppId === app.id} onClick={() => void rotateApiKey(app)} type="button">
+                      Delete API Key
+                    </button>
+                  </div>
+                </td>
+                <td className="space-y-2 p-3">
+                  <p className="text-xs font-semibold text-slate-600">Status: {app.isActive ? 'Active' : 'Inactive'}</p>
+                  <button className="w-full rounded border px-2 py-1 text-xs" disabled={busyAppId === app.id} onClick={() => void toggleAppStatus(app, !app.isActive)} type="button">
+                    {app.isActive ? 'Deactivate App' : 'Activate App'}
+                  </button>
+                  <button className="w-full rounded border border-rose-300 px-2 py-1 text-xs text-rose-700" disabled={busyAppId === app.id} onClick={() => void deleteApp(app)} type="button">
+                    Delete App
+                  </button>
                 </td>
               </tr>
             ))}
