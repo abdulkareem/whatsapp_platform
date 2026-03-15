@@ -108,7 +108,12 @@ const rawEnv = {
   SMTP_SECURE: process.env.SMTP_SECURE ?? process.env.SMTP_SSL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
-  ADMIN_TOKEN_SECRET: resolveAdminTokenSecret()
+  ADMIN_TOKEN_SECRET: resolveAdminTokenSecret(),
+  JWT_SECRET: process.env.JWT_SECRET ?? resolveAdminTokenSecret(),
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  REDIS_URL: process.env.REDIS_URL,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  PLATFORM_BASE_URL: process.env.PLATFORM_BASE_URL
 };
 
 const envSchema = z.object({
@@ -124,6 +129,8 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().optional(),
   ADMIN_EMAIL: z.string().email().default('abdulkareem.t@gmail.com'),
   ADMIN_TOKEN_SECRET: z.string().min(16),
+  JWT_SECRET: z.string().min(16),
+  REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('127.0.0.1'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_USERNAME: z.string().optional(),
@@ -138,7 +145,10 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: z.coerce.boolean().default(false),
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().optional()
+  RESEND_FROM_EMAIL: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  PLATFORM_BASE_URL: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(rawEnv);

@@ -6,6 +6,9 @@ import MessageLogsPage from './pages/MessageLogsPage';
 import BroadcastPage from './pages/BroadcastPage';
 import OtpMonitoringPage from './pages/OtpMonitoringPage';
 import AdminLoginPage from './pages/AdminLoginPage';
+import WorkflowsPage from './pages/WorkflowsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 import { auth } from './services/auth';
 
 const navItems = [
@@ -13,7 +16,10 @@ const navItems = [
   ['/apps', 'App Management'],
   ['/logs', 'Message Logs'],
   ['/broadcast', 'Broadcast Tool'],
-  ['/otp', 'OTP Monitoring']
+  ['/otp', 'OTP Monitoring'],
+  ['/workflows', 'Workflows'],
+  ['/analytics', 'Analytics'],
+  ['/settings', 'Settings']
 ] as const;
 
 function AppLayout() {
@@ -48,6 +54,9 @@ function AppLayout() {
             <Route path="/logs" element={<MessageLogsPage />} />
             <Route path="/broadcast" element={<BroadcastPage />} />
             <Route path="/otp" element={<OtpMonitoringPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
       </div>

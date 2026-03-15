@@ -3,6 +3,7 @@ import { prisma } from '../database/prisma';
 import { env } from '../config/env';
 
 interface AppRoutingConfigInput {
+  tenantId?: number;
   sessionEnabled?: boolean;
   sessionTimeoutMinutes?: number;
   keywordRequired?: boolean;
@@ -15,6 +16,7 @@ interface AppRoutingConfigInput {
 }
 
 const normalizeEndpoint = (endpoint: string) => endpoint.trim();
+const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 const resolveInternalWebhookUrl = () => {
   if (!env.WEBHOOK_BASE_URL) return null;
@@ -41,10 +43,14 @@ export const appService = {
   createApp: async (name: string, keyword: string, endpoint: string, config: AppRoutingConfigInput = {}) => {
     const normalizedEndpoint = normalizeEndpoint(endpoint);
     assertEndpointIsNotInternalWebhook(normalizedEndpoint);
+    const normalizedKeyword = keyword.toUpperCase();
+    const slug = slugify(config.name ?? name ?? normalizedKeyword);
 
     const data = {
       name,
-      keyword: keyword.toUpperCase(),
+      keyword: normalizedKeyword,
+      slug,
+      webhookPath: `/app/${slug}`,
       endpoint: normalizedEndpoint,
       apiKey: crypto.randomBytes(24).toString('hex'),
       ...config
@@ -65,7 +71,8 @@ export const appService = {
     const updateData = {
       ...config,
       keyword: config.keyword?.toUpperCase(),
-      endpoint: config.endpoint ? normalizeEndpoint(config.endpoint) : undefined
+      endpoint: config.endpoint ? normalizeEndpoint(config.endpoint) : undefined,
+      slug: config.name ? slugify(config.name) : undefined
     };
 
     if (updateData.endpoint) {
@@ -91,5 +98,7 @@ export const appService = {
 
   findDefaultApp: () => prisma.app.findFirst({ where: { defaultApp: true } }),
 
-  findByApiKey: (apiKey: string) => prisma.app.findUnique({ where: { apiKey } })
+  findByApiKey: (apiKey: string) => prisma.app.findUnique({ where: { apiKey } }),
+
+  findBySlug: (slug: string) => prisma.app.findFirst({ where: { slug } })
 };

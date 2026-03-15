@@ -10,11 +10,18 @@ import messageRoutes from './routes/messageRoutes';
 import appRoutes from './routes/appRoutes';
 import adminRoutes from './routes/adminRoutes';
 import broadcastRoutes from './routes/broadcastRoutes';
+import tenantRoutes from './routes/tenantRoutes';
+import workflowRoutes from './routes/workflowRoutes';
+import analyticsRoutes from './routes/analyticsRoutes';
+import billingRoutes from './routes/billingRoutes';
+import { appEndpointController } from './controllers/appEndpointController';
+import authRoutes from './routes/authRoutes';
 import { swaggerSpec } from './config/swagger';
 import { authMiddleware } from './middleware/authMiddleware';
 import { apiRateLimiter } from './middleware/rateLimitMiddleware';
 import { messageController } from './controllers/messageController';
 import { startMessageWorker } from './queue/messageWorker';
+import { startPlatformWorker } from './workers/platformWorker';
 
 const app = express();
 
@@ -69,8 +76,14 @@ app.use('/webhook', webhookRoutes);
 app.use('/api/messages', messageRoutes);
 app.post('/api/otp/send', authMiddleware, apiRateLimiter, messageController.sendOtp);
 app.use('/api/admin', adminRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/broadcast', broadcastRoutes);
+app.use('/api/tenants', tenantRoutes);
+app.use('/api/workflows', workflowRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/billing', billingRoutes);
+app.post('/app/:slug', appEndpointController.receive);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });
@@ -95,6 +108,7 @@ app.use((error: Error & { status?: number; type?: string }, _req: express.Reques
 });
 
 startMessageWorker();
+startPlatformWorker();
 
 app.listen(env.PORT, () => {
   logger.info(`Server running on port ${env.PORT}`);

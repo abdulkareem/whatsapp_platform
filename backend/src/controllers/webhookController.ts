@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { logger } from '../config/logger';
 import type { WhatsAppInboundPayload } from '../types/shared';
 import { messageQueue } from '../queue/messageQueue';
+import { inboundMessagesCounter } from '../config/metrics';
 
 type NormalizedInboundMessage = {
   mobile?: string;
@@ -102,6 +103,7 @@ export const webhookController = {
       }
 
       messageQueue.enqueue({ mobile, message, messageId });
+      inboundMessagesCounter.labels('shared', 'keyword-router').inc();
 
       logger.info('Inbound WhatsApp message enqueued', {
         from: mobile,
