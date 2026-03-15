@@ -6,6 +6,11 @@ export interface AppRecord {
   apiKey: string;
   rateLimitRpm: number;
   isActive: boolean;
+  sessionEnabled: boolean;
+  sessionTimeoutMinutes: number;
+  keywordRequired: boolean;
+  defaultApp: boolean;
+  fallbackMessage?: string | null;
 }
 
 export interface MessageLog {
