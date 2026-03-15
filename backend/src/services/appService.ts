@@ -19,6 +19,13 @@ export const appService = {
     data: { apiKey: crypto.randomBytes(24).toString('hex') }
   }),
 
+  updateStatus: async (id: number, isActive: boolean) => prisma.app.update({
+    where: { id },
+    data: { isActive }
+  }),
+
+  deleteApp: async (id: number) => prisma.app.delete({ where: { id } }),
+
   findByKeyword: (keyword: string) => prisma.app.findUnique({ where: { keyword: keyword.toUpperCase() } }),
 
   findByApiKey: (apiKey: string) => prisma.app.findUnique({ where: { apiKey } })
