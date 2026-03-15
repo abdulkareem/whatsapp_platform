@@ -189,3 +189,22 @@ Forwarded payload sent to the matched app endpoint:
 - **No Prisma schema migration is required** for this rollout.
 - External apps should store the generated app `apiKey` in their `APP_API_KEY` secret.
 - If you enforce strict CORS headers in custom clients, include one of supported app-key headers.
+
+## Meta WhatsApp Webhook Setup (for inbound messages)
+
+Use your backend webhook URL in **Meta Developer Dashboard**:
+
+- **Callback URL**: `https://whatsappplatform-production.up.railway.app/webhook`
+- **Verify token**: must be exactly the same value as backend env `VERIFY_TOKEN` (or `WHATSAPP_VERIFY_TOKEN`).
+
+In this codebase, inbound webhook verification is handled at `GET /webhook` and checks `hub.verify_token === VERIFY_TOKEN`. If tokens do not match, Meta gets `403` and webhook subscription fails.
+
+After verification, Meta sends inbound events to `POST /webhook`.
+
+Checklist if messages are not arriving:
+
+1. In Railway variables, set `VERIFY_TOKEN` and redeploy.
+2. In Meta dashboard webhook config, paste the same token in **Verify token** and re-verify.
+3. Ensure your app subscribed WhatsApp webhook fields (at minimum `messages`).
+4. Ensure the phone number is added to the same WhatsApp Business Account connected to the app.
+5. For test numbers, ensure sender/recipient are added in Meta test recipients.
