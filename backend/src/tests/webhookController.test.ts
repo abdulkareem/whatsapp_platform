@@ -64,3 +64,86 @@ test('receiveWebhook parses provider payload and enqueues each inbound message',
 
   (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
 });
+
+test('receiveWebhook extracts contact wa_id fallback and interactive message text', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  const enqueued: Array<{ mobile: string; message: string; messageId?: string }> = [];
+
+  (messageQueue as unknown as { enqueue: (payload: { mobile: string; message: string; messageId?: string }) => unknown }).enqueue = (
+    payload
+  ) => {
+    enqueued.push(payload);
+    return { id: 1 };
+  };
+
+  const req = {
+    body: {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                contacts: [{ wa_id: '12025550300' }],
+                messages: [
+                  {
+                    id: 'mid3',
+                    type: 'interactive',
+                    interactive: {
+                      button_reply: {
+                        title: 'Confirm order'
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  } as Request;
+
+  const { res, payload } = createResponse();
+  await webhookController.receiveWebhook(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.deepEqual(enqueued, [{ mobile: '12025550300', message: 'Confirm order', messageId: 'mid3' }]);
+
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
+});
+
+test('receiveWebhook ignores status-only events without throwing', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  let enqueueCalls = 0;
+
+  (messageQueue as unknown as { enqueue: (payload: { mobile: string; message: string; messageId?: string }) => unknown }).enqueue = () => {
+    enqueueCalls += 1;
+    return { id: 1 };
+  };
+
+  const req = {
+    body: {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                statuses: [{ id: 'wamid.status.1', status: 'delivered' }]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  } as Request;
+
+  const { res, payload } = createResponse();
+  await webhookController.receiveWebhook(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.equal(enqueueCalls, 0);
+
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
+});
