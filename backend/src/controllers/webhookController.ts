@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { env } from '../config/env';
-import { messageRouterService } from '../services/messageRouterService';
 import { logger } from '../config/logger';
 import type { WhatsAppInboundPayload } from '../types/shared';
-
+import { messageQueue } from '../queue/messageQueue';
 
 export const webhookController = {
   verifyWebhook(req: Request, res: Response) {
@@ -46,24 +45,14 @@ export const webhookController = {
         continue;
       }
 
-      logger.info('Inbound WhatsApp message received', {
+      messageQueue.enqueue({ mobile, message, messageId });
+
+      logger.info('Inbound WhatsApp message enqueued', {
         from: mobile,
         text: message,
         messageId,
         messageType
       });
-
-      try {
-        await messageRouterService.routeIncomingMessage(mobile, message);
-      } catch (error) {
-        logger.error('Failed to route inbound message', {
-          error,
-          mobile,
-          message,
-          messageId,
-          messageType
-        });
-      }
     }
 
     return res.sendStatus(200);

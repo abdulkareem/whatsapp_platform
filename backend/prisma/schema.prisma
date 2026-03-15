@@ -15,6 +15,11 @@ model App {
   apiKey        String        @unique
   rateLimitRpm  Int           @default(100)
   isActive      Boolean       @default(true)
+  sessionEnabled Boolean      @default(true)
+  sessionTimeoutMinutes Int   @default(15)
+  keywordRequired Boolean     @default(true)
+  defaultApp    Boolean       @default(false)
+  fallbackMessage String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   conversations Conversation[]
@@ -48,6 +53,7 @@ model Conversation {
   mobile     String
   appId      Int
   lastMessage String
+  sessionExpiresAt DateTime?
   updatedAt  DateTime @updatedAt
   app        App      @relation(fields: [appId], references: [id], onDelete: Cascade)
 

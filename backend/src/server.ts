@@ -14,6 +14,7 @@ import { swaggerSpec } from './config/swagger';
 import { authMiddleware } from './middleware/authMiddleware';
 import { apiRateLimiter } from './middleware/rateLimitMiddleware';
 import { messageController } from './controllers/messageController';
+import { startMessageWorker } from './queue/messageWorker';
 
 const app = express();
 
@@ -92,6 +93,8 @@ app.use((error: Error & { status?: number; type?: string }, _req: express.Reques
 
   return res.status(500).json({ error: 'Internal Server Error' });
 });
+
+startMessageWorker();
 
 app.listen(env.PORT, () => {
   logger.info(`Server running on port ${env.PORT}`);

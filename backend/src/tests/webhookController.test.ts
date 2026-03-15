@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import { webhookController } from '../controllers/webhookController';
-import { messageRouterService } from '../services/messageRouterService';
+import { messageQueue } from '../queue/messageQueue';
 
 const createResponse = () => {
   const payload: { status?: number; body?: unknown } = {};
@@ -24,12 +24,13 @@ const createResponse = () => {
   return { res, payload };
 };
 
-test('receiveWebhook parses provider payload and routes each inbound message', async () => {
-  const originalRoute = messageRouterService.routeIncomingMessage;
-  const routed: Array<{ mobile: string; message: string }> = [];
+test('receiveWebhook parses provider payload and enqueues each inbound message', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  const enqueued: Array<{ mobile: string; message: string }> = [];
 
-  (messageRouterService as unknown as { routeIncomingMessage: (mobile: string, message: string) => Promise<void> }).routeIncomingMessage = async (mobile: string, message: string) => {
-    routed.push({ mobile, message });
+  (messageQueue as unknown as { enqueue: (payload: { mobile: string; message: string }) => unknown }).enqueue = (payload) => {
+    enqueued.push(payload);
+    return { id: 1 };
   };
 
   const req = {
@@ -56,10 +57,10 @@ test('receiveWebhook parses provider payload and routes each inbound message', a
   await webhookController.receiveWebhook(req, res);
 
   assert.equal(payload.status, 200);
-  assert.deepEqual(routed, [
-    { mobile: '12025550199', message: 'ORDER create invoice' },
-    { mobile: '12025550200', message: 'HELP reset pin' }
+  assert.deepEqual(enqueued, [
+    { mobile: '12025550199', message: 'ORDER create invoice', messageId: 'mid1' },
+    { mobile: '12025550200', message: 'HELP reset pin', messageId: 'mid2' }
   ]);
 
-  (messageRouterService as unknown as { routeIncomingMessage: typeof originalRoute }).routeIncomingMessage = originalRoute;
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
 });

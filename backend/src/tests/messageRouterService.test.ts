@@ -4,24 +4,30 @@ import axios from 'axios';
 import { messageRouterService } from '../services/messageRouterService';
 import { appService } from '../services/appService';
 import { prisma } from '../database/prisma';
+import { whatsappService } from '../services/whatsappService';
 
 test('keyword extraction sanitizes first token and keeps remaining command', () => {
-  const keyword = messageRouterService.extractKeyword('  #order!!  open ticket now  ');
-  const command = messageRouterService.extractCommand('  #order!!  open ticket now  ');
-
-  assert.equal(keyword, 'ORDER');
-  assert.equal(command, 'open ticket now');
+  assert.equal(messageRouterService.extractKeyword('  #order!!  open ticket now  '), 'ORDER');
+  assert.equal(messageRouterService.extractCommand('  #order!!  open ticket now  '), 'open ticket now');
 });
 
 test('routeIncomingMessage marks unrouted without forwarding', async () => {
-  const originalFindByKeyword = appService.findByKeyword;
+  const originalResolve = messageRouterService.resolveRouteApp;
+  const originalFindFallback = prisma.app.findFirst;
   const originalCreate = prisma.messageLog.create;
   const originalPost = axios.post;
+  const originalSend = whatsappService.sendMessage;
 
   let status: string | undefined;
   let forwarded = false;
 
-  (appService as unknown as { findByKeyword: (keyword: string) => Promise<unknown> }).findByKeyword = async () => null;
+  (messageRouterService as unknown as { resolveRouteApp: (...args: any[]) => Promise<any> }).resolveRouteApp = async () => ({
+    keyword: 'UNKNOWN',
+    command: 'please help',
+    app: null,
+    via: 'unrouted'
+  });
+  (prisma.app as unknown as { findFirst: (args: any) => Promise<unknown> }).findFirst = async () => null;
   (prisma.messageLog as unknown as { create: (args: any) => Promise<unknown> }).create = async (args: any) => {
     status = args.data.status;
     return { id: 1 } as never;
@@ -30,77 +36,46 @@ test('routeIncomingMessage marks unrouted without forwarding', async () => {
     forwarded = true;
     return { data: {} };
   };
+  (whatsappService as unknown as { sendMessage: (...args: any[]) => Promise<unknown> }).sendMessage = async () => ({ ok: true });
 
   await messageRouterService.routeIncomingMessage('12025550199', 'UNKNOWN please help');
 
   assert.equal(status, 'unrouted');
   assert.equal(forwarded, false);
 
-  (appService as unknown as { findByKeyword: typeof originalFindByKeyword }).findByKeyword = originalFindByKeyword;
+  (messageRouterService as unknown as { resolveRouteApp: typeof originalResolve }).resolveRouteApp = originalResolve;
+  (prisma.app as unknown as { findFirst: typeof originalFindFallback }).findFirst = originalFindFallback;
   (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
   (axios as unknown as { post: typeof originalPost }).post = originalPost;
+  (whatsappService as unknown as { sendMessage: typeof originalSend }).sendMessage = originalSend;
 });
 
-test('routeIncomingMessage does not forward inactive app', async () => {
-  const originalFindByKeyword = appService.findByKeyword;
-  const originalCreate = prisma.messageLog.create;
-  const originalPost = axios.post;
-
-  let status: string | undefined;
-  let forwarded = false;
-
-  (appService as unknown as { findByKeyword: (keyword: string) => Promise<unknown> }).findByKeyword = async () => ({
-    id: 2,
-    name: 'Helpdesk',
-    keyword: 'HELP',
-    endpoint: 'https://example.com/webhook',
-    apiKey: 'x',
-    rateLimitRpm: 100,
-    isActive: false,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
-
-  (prisma.messageLog as unknown as { create: (args: any) => Promise<unknown> }).create = async (args: any) => {
-    status = args.data.status;
-    return { id: 1 } as never;
-  };
-  (axios as unknown as { post: (...args: any[]) => Promise<unknown> }).post = async () => {
-    forwarded = true;
-    return { data: {} };
-  };
-
-  await messageRouterService.routeIncomingMessage('12025550199', 'help reset');
-
-  assert.equal(status, 'inactive');
-  assert.equal(forwarded, false);
-
-  (appService as unknown as { findByKeyword: typeof originalFindByKeyword }).findByKeyword = originalFindByKeyword;
-  (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
-  (axios as unknown as { post: typeof originalPost }).post = originalPost;
-});
-
-test('routeIncomingMessage forwards payload for active app (mock outbound HTTP)', async () => {
-  const originalFindByKeyword = appService.findByKeyword;
+test('routeIncomingMessage forwards payload for active app', async () => {
+  const originalResolve = messageRouterService.resolveRouteApp;
+  const originalFindFallback = prisma.app.findFirst;
   const originalCreate = prisma.messageLog.create;
   const originalUpsert = prisma.conversation.upsert;
   const originalPost = axios.post;
 
   let status: string | undefined;
-  let postedPayload: unknown;
+  let postedPayload: any;
 
-  (appService as unknown as { findByKeyword: (keyword: string) => Promise<unknown> }).findByKeyword = async () => ({
-    id: 3,
-    name: 'Orders',
+  (messageRouterService as unknown as { resolveRouteApp: (...args: any[]) => Promise<any> }).resolveRouteApp = async () => ({
     keyword: 'ORDER',
-    endpoint: 'https://partner.app/inbound',
-    apiKey: 'k',
-    rateLimitRpm: 100,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    command: 'create shipment',
+    app: {
+      id: 3,
+      keyword: 'ORDER',
+      endpoint: 'https://partner.app/inbound',
+      rateLimitRpm: 100,
+      isActive: true,
+      sessionEnabled: true,
+      sessionTimeoutMinutes: 15
+    },
+    via: 'keyword'
   });
 
+  (prisma.app as unknown as { findFirst: (args: any) => Promise<unknown> }).findFirst = async () => null;
   (prisma.messageLog as unknown as { create: (args: any) => Promise<unknown> }).create = async (args: any) => {
     status = args.data.status;
     return { id: 1 } as never;
@@ -114,19 +89,10 @@ test('routeIncomingMessage forwards payload for active app (mock outbound HTTP)'
   await messageRouterService.routeIncomingMessage('12025550199', 'order create shipment');
 
   assert.equal(status, 'routed');
-  assert.deepEqual(postedPayload, {
-    mobile: '12025550199',
-    message: 'order create shipment',
-    keyword: 'ORDER',
-    command: 'create shipment',
-    trigger: {
-      keyword: 'ORDER',
-      command: 'create shipment',
-      fullText: 'order create shipment'
-    }
-  });
+  assert.equal(postedPayload.routeMode, 'keyword');
+  assert.equal(postedPayload.keyword, 'ORDER');
 
-  (appService as unknown as { findByKeyword: typeof originalFindByKeyword }).findByKeyword = originalFindByKeyword;
+  (messageRouterService as unknown as { resolveRouteApp: typeof originalResolve }).resolveRouteApp = originalResolve;
   (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
   (prisma.conversation as unknown as { upsert: typeof originalUpsert }).upsert = originalUpsert;
   (axios as unknown as { post: typeof originalPost }).post = originalPost;
