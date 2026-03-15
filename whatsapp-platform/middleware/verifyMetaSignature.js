@@ -3,7 +3,7 @@ import { HttpError } from "../utils/httpError.js";
 
 const SIGNATURE_PREFIX = "sha256=";
 
-export const verifyMetaSignature = (req, _res, next) => {
+export const verifyMetaSignature = (req, res, next) => {
   const appSecret = process.env.META_APP_SECRET;
   const signatureHeader = req.header("X-Hub-Signature-256");
 
@@ -12,7 +12,9 @@ export const verifyMetaSignature = (req, _res, next) => {
   }
 
   if (!signatureHeader || !signatureHeader.startsWith(SIGNATURE_PREFIX)) {
-    return next(new HttpError(401, "Missing or invalid X-Hub-Signature-256 header"));
+    console.log("Webhook request received but missing signature.");
+
+    return res.status(200).json({ status: "ignored", reason: "missing_signature" });
   }
 
   const rawBody = req.rawBody;
