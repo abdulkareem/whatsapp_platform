@@ -7,33 +7,101 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model App {
-  id            Int           @id @default(autoincrement())
+enum PlanType {
+  FREE
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WorkflowStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model Tenant {
+  id            Int            @id @default(autoincrement())
   name          String
-  keyword       String        @unique
-  endpoint      String
-  apiKey        String        @unique
-  rateLimitRpm  Int           @default(100)
-  isActive      Boolean       @default(true)
-  sessionEnabled Boolean      @default(true)
-  sessionTimeoutMinutes Int   @default(15)
-  keywordRequired Boolean     @default(true)
-  defaultApp    Boolean       @default(false)
-  fallbackMessage String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  conversations Conversation[]
+  slug          String         @unique
+  timezone      String         @default("UTC")
+  isSuspended   Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  users         User[]
+  apps          App[]
+  contacts      Contact[]
+  campaigns     Campaign[]
+  workflows     Workflow[]
+  subscriptions Subscription[]
+  apiKeys       ApiKey[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  email        String
+  passwordHash String?
+  name         String
+  role         String   @default("member")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+}
+
+model App {
+  id                     Int            @id @default(autoincrement())
+  tenantId               Int?
+  name                   String
+  slug                   String?
+  keyword                String         @unique
+  endpoint               String
+  apiKey                 String         @unique
+  rateLimitRpm           Int            @default(100)
+  isActive               Boolean        @default(true)
+  sessionEnabled         Boolean        @default(true)
+  sessionTimeoutMinutes  Int            @default(15)
+  keywordRequired        Boolean        @default(true)
+  defaultApp             Boolean        @default(false)
+  fallbackMessage        String?
+  webhookPath            String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  conversations          Conversation[]
+  messages               MessageLog[]
+  tenant                 Tenant?        @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  workflows              Workflow[]
+  campaigns              Campaign[]
+
+  @@unique([tenantId, slug])
 }
 
 model MessageLog {
-  id               Int       @id @default(autoincrement())
-  mobile           String
-  message          String
-  direction        String
-  app              String
-  status           String    @default("queued")
+  id                Int       @id @default(autoincrement())
+  tenantId          Int?
+  appId             Int?
+  contactId         Int?
+  mobile            String
+  message           String
+  direction         String
+  app               String
+  status            String    @default("queued")
   providerMessageId String?
-  createdAt        DateTime  @default(now())
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  appRelation       App?      @relation(fields: [appId], references: [id], onDelete: SetNull)
+  contact           Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
 }
 
 model Otp {
@@ -49,17 +117,103 @@ model Otp {
 }
 
 model Conversation {
-  id         Int      @id @default(autoincrement())
-  mobile     String
-  appId      Int
-  lastMessage String
+  id               Int       @id @default(autoincrement())
+  mobile           String
+  appId            Int
+  contactId        Int?
+  lastMessage      String
   sessionExpiresAt DateTime?
-  updatedAt  DateTime @updatedAt
-  app        App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  contextMemory    Json?
+  updatedAt        DateTime  @updatedAt
+  app              App       @relation(fields: [appId], references: [id], onDelete: Cascade)
+  contact          Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
   @@unique([mobile, appId])
 }
 
+model Contact {
+  id              Int           @id @default(autoincrement())
+  tenantId        Int
+  name            String?
+  mobile          String
+  tags            String[]      @default([])
+  notes           String?
+  lastInteraction DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messages        MessageLog[]
+  conversations   Conversation[]
+
+  @@unique([tenantId, mobile])
+}
+
+model Campaign {
+  id                Int            @id @default(autoincrement())
+  tenantId          Int
+  appId             Int?
+  name              String
+  status            CampaignStatus @default(DRAFT)
+  templateName      String?
+  scheduledAt       DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  recipientCount    Int            @default(0)
+  deliveredCount    Int            @default(0)
+  readCount         Int            @default(0)
+  failedCount       Int            @default(0)
+  csvUrl            String?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  app               App?           @relation(fields: [appId], references: [id], onDelete: SetNull)
+}
+
+model Workflow {
+  id          Int            @id @default(autoincrement())
+  tenantId    Int
+  appId       Int?
+  name        String
+  status      WorkflowStatus @default(ACTIVE)
+  triggerType String
+  definition  Json
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  app         App?           @relation(fields: [appId], references: [id], onDelete: SetNull)
+}
+
+model ApiKey {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  name        String
+  keyHash     String   @unique
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isRevoked   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                 Int      @id @default(autoincrement())
+  tenantId           Int
+  stripeCustomerId   String?  @unique
+  stripeSubscriptionId String? @unique
+  plan               PlanType @default(FREE)
+  contactsLimit      Int      @default(500)
+  campaignLimit      Int      @default(1000)
+  aiTokenLimit       Int      @default(10000)
+  apiCallLimit       Int      @default(50000)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId])
+}
 
 model AdminOtp {
   id        Int      @id @default(autoincrement())

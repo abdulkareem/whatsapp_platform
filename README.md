@@ -208,3 +208,17 @@ Checklist if messages are not arriving:
 3. Ensure your app subscribed WhatsApp webhook fields (at minimum `messages`).
 4. Ensure the phone number is added to the same WhatsApp Business Account connected to the app.
 5. For test numbers, ensure sender/recipient are added in Meta test recipients.
+
+## Multi-tenant SaaS APIs (v2)
+
+- `POST /api/auth/login` - issue JWT token.
+- `GET/POST /api/tenants` - tenant lifecycle.
+- `GET /api/workflows/:tenantId` and `POST /api/workflows` - workflow builder persistence.
+- `GET /api/analytics/tenant/:tenantId/overview` - analytics summary.
+- `GET /api/analytics/metrics` - Prometheus metrics endpoint.
+- `GET /api/billing/plans` - SaaS plans.
+- `POST /api/billing/tenant/:tenantId/subscribe` - plan assignment.
+- `POST /api/billing/tenant/:tenantId/checkout` - Stripe Checkout session.
+- `POST /app/:slug` - auto-provisioned app endpoint.
+
+See `backend/src/docs/architecture.md` for deployment and operational details.
