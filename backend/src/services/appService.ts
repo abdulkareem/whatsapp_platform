@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../database/prisma';
+import { env } from '../config/env';
 
 interface AppRoutingConfigInput {
   sessionEnabled?: boolean;
@@ -8,16 +9,43 @@ interface AppRoutingConfigInput {
   defaultApp?: boolean;
   fallbackMessage?: string | null;
   rateLimitRpm?: number;
+  endpoint?: string;
+  name?: string;
+  keyword?: string;
 }
+
+const normalizeEndpoint = (endpoint: string) => endpoint.trim();
+
+const resolveInternalWebhookUrl = () => {
+  if (!env.WEBHOOK_BASE_URL) return null;
+
+  try {
+    return new URL('/webhook', env.WEBHOOK_BASE_URL).toString();
+  } catch {
+    return null;
+  }
+};
+
+const assertEndpointIsNotInternalWebhook = (endpoint: string) => {
+  const internalWebhookUrl = resolveInternalWebhookUrl();
+  if (!internalWebhookUrl) return;
+
+  if (normalizeEndpoint(endpoint) === internalWebhookUrl) {
+    throw new Error('App endpoint cannot be the platform webhook URL. Use your app callback URL instead.');
+  }
+};
 
 export const appService = {
   listApps: () => prisma.app.findMany({ orderBy: { createdAt: 'desc' } }),
 
   createApp: async (name: string, keyword: string, endpoint: string, config: AppRoutingConfigInput = {}) => {
+    const normalizedEndpoint = normalizeEndpoint(endpoint);
+    assertEndpointIsNotInternalWebhook(normalizedEndpoint);
+
     const data = {
       name,
       keyword: keyword.toUpperCase(),
-      endpoint,
+      endpoint: normalizedEndpoint,
       apiKey: crypto.randomBytes(24).toString('hex'),
       ...config
     };
@@ -34,7 +62,17 @@ export const appService = {
       await prisma.app.updateMany({ where: { id: { not: id } }, data: { defaultApp: false } });
     }
 
-    return prisma.app.update({ where: { id }, data: config });
+    const updateData = {
+      ...config,
+      keyword: config.keyword?.toUpperCase(),
+      endpoint: config.endpoint ? normalizeEndpoint(config.endpoint) : undefined
+    };
+
+    if (updateData.endpoint) {
+      assertEndpointIsNotInternalWebhook(updateData.endpoint);
+    }
+
+    return prisma.app.update({ where: { id }, data: updateData });
   },
 
   rotateApiKey: async (id: number) => prisma.app.update({

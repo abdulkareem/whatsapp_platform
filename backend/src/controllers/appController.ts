@@ -1,8 +1,27 @@
 import { Request, Response } from 'express';
 import { appService } from '../services/appService';
+import { env } from '../config/env';
 import { getFailedQueueJobs, getQueueStats } from '../queue/messageWorker';
 
 const validatePositiveInteger = (value: unknown) => Number.isInteger(value) && Number(value) > 0;
+
+
+const resolveInternalWebhookUrl = () => {
+  if (!env.WEBHOOK_BASE_URL) return null;
+
+  try {
+    return new URL('/webhook', env.WEBHOOK_BASE_URL).toString();
+  } catch {
+    return null;
+  }
+};
+
+const isInternalWebhookEndpoint = (endpoint: string) => {
+  const internalWebhookUrl = resolveInternalWebhookUrl();
+  if (!internalWebhookUrl) return false;
+  return endpoint.trim() === internalWebhookUrl;
+};
+
 
 export const appController = {
   async list(req: Request, res: Response) {
@@ -39,6 +58,10 @@ export const appController = {
 
     if (!normalizedName || !normalizedKeyword || !normalizedEndpoint) {
       return res.status(400).json({ error: 'name, keyword and endpoint are required' });
+    }
+
+    if (isInternalWebhookEndpoint(normalizedEndpoint)) {
+      return res.status(400).json({ error: 'endpoint cannot be the platform webhook URL' });
     }
 
     if (rateLimitRpm !== undefined && !validatePositiveInteger(rateLimitRpm)) {
@@ -88,13 +111,22 @@ export const appController = {
       return res.status(400).json({ error: 'sessionTimeoutMinutes must be a positive integer' });
     }
 
+    const normalizedEndpoint = updates.endpoint?.trim();
+
+    if (normalizedEndpoint && isInternalWebhookEndpoint(normalizedEndpoint)) {
+      return res.status(400).json({ error: 'endpoint cannot be the platform webhook URL' });
+    }
+
     const app = await appService.updateAppConfig(id, {
       rateLimitRpm: updates.rateLimitRpm,
       sessionEnabled: updates.sessionEnabled,
       sessionTimeoutMinutes: updates.sessionTimeoutMinutes,
       keywordRequired: updates.keywordRequired,
       defaultApp: updates.defaultApp,
-      fallbackMessage: updates.fallbackMessage === undefined ? undefined : updates.fallbackMessage?.trim() || null
+      fallbackMessage: updates.fallbackMessage === undefined ? undefined : updates.fallbackMessage?.trim() || null,
+      endpoint: normalizedEndpoint,
+      name: updates.name?.trim(),
+      keyword: updates.keyword?.trim()
     });
 
     return res.status(200).json(app);
