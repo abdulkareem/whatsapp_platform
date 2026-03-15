@@ -113,6 +113,102 @@ test('receiveWebhook extracts contact wa_id fallback and interactive message tex
   (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
 });
 
+
+test('receiveWebhook extracts quick-reply payload when button text is missing', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  const enqueued: Array<{ mobile: string; message: string; messageId?: string }> = [];
+
+  (messageQueue as unknown as { enqueue: (payload: { mobile: string; message: string; messageId?: string }) => unknown }).enqueue = (
+    payload
+  ) => {
+    enqueued.push(payload);
+    return { id: 1 };
+  };
+
+  const req = {
+    body: {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    id: 'mid4',
+                    type: 'button',
+                    from: '12025550400',
+                    button: {
+                      payload: 'Yes, continue'
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  } as Request;
+
+  const { res, payload } = createResponse();
+  await webhookController.receiveWebhook(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.deepEqual(enqueued, [{ mobile: '12025550400', message: 'Yes, continue', messageId: 'mid4' }]);
+
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
+});
+
+test('receiveWebhook extracts nfm reply payload text', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  const enqueued: Array<{ mobile: string; message: string; messageId?: string }> = [];
+
+  (messageQueue as unknown as { enqueue: (payload: { mobile: string; message: string; messageId?: string }) => unknown }).enqueue = (
+    payload
+  ) => {
+    enqueued.push(payload);
+    return { id: 1 };
+  };
+
+  const req = {
+    body: {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    id: 'mid5',
+                    type: 'interactive',
+                    from: '12025550500',
+                    interactive: {
+                      nfm_reply: {
+                        body: '{\"flow_token\":\"abc123\"}'
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  } as Request;
+
+  const { res, payload } = createResponse();
+  await webhookController.receiveWebhook(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.deepEqual(enqueued, [{ mobile: '12025550500', message: '{\"flow_token\":\"abc123\"}', messageId: 'mid5' }]);
+
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
+});
+
+
 test('receiveWebhook ignores status-only events without throwing', async () => {
   const originalEnqueue = messageQueue.enqueue;
   let enqueueCalls = 0;
