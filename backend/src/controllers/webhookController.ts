@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
-import type { WhatsAppInboundPayload } from '../types/shared';
+import type { WhatsAppInboundPayload, WhatsAppLocation } from '../types/shared';
 import { messageQueue } from '../queue/messageQueue';
 import { inboundMessagesCounter } from '../config/metrics';
 
@@ -10,6 +10,13 @@ type NormalizedInboundMessage = {
   message?: string;
   messageId?: string;
   messageType?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+  };
+  locationError?: string;
 };
 
 const extractMessageText = (item: NonNullable<WhatsAppInboundPayload['messages']>[number]) => {
@@ -29,6 +36,31 @@ const extractMessageText = (item: NonNullable<WhatsAppInboundPayload['messages']
   return textCandidates.find((value) => value?.trim())?.trim();
 };
 
+
+const parseLocation = (location?: WhatsAppLocation) => {
+  if (!location) {
+    return { error: 'Missing location payload' } as const;
+  }
+
+  const rawLatitude = typeof location.latitude === 'string' ? Number(location.latitude) : location.latitude;
+  const rawLongitude = typeof location.longitude === 'string' ? Number(location.longitude) : location.longitude;
+
+  if (!Number.isFinite(rawLatitude) || !Number.isFinite(rawLongitude)) {
+    return {
+      error: 'Location payload is missing valid latitude/longitude values'
+    } as const;
+  }
+
+  return {
+    value: {
+      latitude: rawLatitude as number,
+      longitude: rawLongitude as number,
+      name: location.name?.trim() || undefined,
+      address: location.address?.trim() || undefined
+    }
+  } as const;
+};
+
 const normalizeMessages = (body: WhatsAppInboundPayload): NormalizedInboundMessage[] => {
   const nestedMessages = body.entry?.flatMap((entry) =>
     entry.changes?.flatMap((change) =>
@@ -42,12 +74,25 @@ const normalizeMessages = (body: WhatsAppInboundPayload): NormalizedInboundMessa
   const topLevelMessages = body.messages ?? [];
   const payloadMessages = [...nestedMessages, ...topLevelMessages];
 
-  return payloadMessages.map((item) => ({
-    mobile: item.from,
-    message: extractMessageText(item),
-    messageId: item.id,
-    messageType: item.type
-  }));
+  return payloadMessages.map((item) => {
+    const normalized: NormalizedInboundMessage = {
+      mobile: item.from,
+      message: extractMessageText(item),
+      messageId: item.id,
+      messageType: item.type
+    };
+
+    if (item.type === 'location') {
+      const parsedLocation = parseLocation(item.location);
+      if ('error' in parsedLocation) {
+        normalized.locationError = parsedLocation.error;
+      } else {
+        normalized.location = parsedLocation.value;
+      }
+    }
+
+    return normalized;
+  });
 };
 
 export const webhookController = {
@@ -90,9 +135,67 @@ export const webhookController = {
     }
 
     for (const item of normalizedMessages) {
-      const { mobile, message, messageId, messageType } = item;
+      const { mobile, message, messageId, messageType, location, locationError } = item;
 
-      if (!mobile || !message) {
+      if (!mobile) {
+        logger.warn('Skipping inbound WhatsApp payload without mobile identifier', {
+          messageId,
+          messageType
+        });
+        continue;
+      }
+
+      if (messageType === 'location') {
+        logger.info('Inbound WhatsApp location message received', {
+          from: mobile,
+          messageId
+        });
+
+        if (locationError || !location) {
+          logger.error('Unable to parse inbound WhatsApp location payload', {
+            from: mobile,
+            messageId,
+            error: locationError ?? 'Unknown location parsing failure'
+          });
+          await messageQueue.enqueue({
+            mobile,
+            messageId,
+            messageType,
+            location: undefined,
+            message: undefined
+          });
+          continue;
+        }
+
+        logger.info('Inbound WhatsApp location extracted', {
+          from: mobile,
+          messageId,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          name: location.name,
+          address: location.address
+        });
+
+        messageQueue.enqueue({
+          mobile,
+          messageId,
+          messageType,
+          location,
+          message
+        });
+        inboundMessagesCounter.labels('shared', 'keyword-router').inc();
+
+        logger.info('Inbound WhatsApp location enqueued', {
+          from: mobile,
+          messageId,
+          routingText: message,
+          latitude: location.latitude,
+          longitude: location.longitude
+        });
+        continue;
+      }
+
+      if (!message) {
         logger.warn('Skipping inbound WhatsApp payload without mobile or text body', {
           messageId,
           messageType,

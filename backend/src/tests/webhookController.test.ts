@@ -243,3 +243,64 @@ test('receiveWebhook ignores status-only events without throwing', async () => {
 
   (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
 });
+
+
+test('receiveWebhook extracts and enqueues location payloads', async () => {
+  const originalEnqueue = messageQueue.enqueue;
+  const enqueued: Array<Record<string, unknown>> = [];
+
+  (messageQueue as unknown as { enqueue: (payload: Record<string, unknown>) => unknown }).enqueue = (payload) => {
+    enqueued.push(payload);
+    return { id: 1 };
+  };
+
+  const req = {
+    body: {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    id: 'mid-location-1',
+                    type: 'location',
+                    from: '12025550600',
+                    location: {
+                      latitude: 37.422,
+                      longitude: -122.084,
+                      name: 'Googleplex',
+                      address: '1600 Amphitheatre Parkway'
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  } as Request;
+
+  const { res, payload } = createResponse();
+  await webhookController.receiveWebhook(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.deepEqual(enqueued, [
+    {
+      mobile: '12025550600',
+      messageId: 'mid-location-1',
+      messageType: 'location',
+      location: {
+        latitude: 37.422,
+        longitude: -122.084,
+        name: 'Googleplex',
+        address: '1600 Amphitheatre Parkway'
+      },
+      message: undefined
+    }
+  ]);
+
+  (messageQueue as unknown as { enqueue: typeof originalEnqueue }).enqueue = originalEnqueue;
+});

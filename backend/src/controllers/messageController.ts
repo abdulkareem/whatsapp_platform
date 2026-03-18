@@ -6,10 +6,22 @@ import { normalizePhone } from '../utils/phoneFormatter';
 import { otpService } from '../services/otpService';
 import { logger } from '../config/logger';
 
-const sendMessageSchema = z.object({
+const sendTextMessageSchema = z.object({
+  type: z.literal('text').optional(),
   mobile: z.string().trim().min(5),
   message: z.string().trim().min(1).max(4096)
 });
+
+const sendLocationMessageSchema = z.object({
+  type: z.literal('location'),
+  mobile: z.string().trim().min(5),
+  latitude: z.coerce.number().finite(),
+  longitude: z.coerce.number().finite(),
+  name: z.string().trim().min(1).max(256).optional(),
+  address: z.string().trim().min(1).max(512).optional()
+});
+
+const sendMessageSchema = z.union([sendTextMessageSchema, sendLocationMessageSchema]);
 
 const sendOtpSchema = z.object({
   mobile: z.string().trim().min(5),
@@ -27,16 +39,33 @@ export const messageController = {
       });
     }
 
-    const { mobile, message } = parsed.data;
-    const normalized = normalizePhone(mobile);
+    const normalized = normalizePhone(parsed.data.mobile);
     const appKeyword = req.appContext?.keyword ?? 'SYSTEM';
-    const provider = await whatsappService.sendMessage(normalized, message);
+
+    const provider =
+      parsed.data.type === 'location'
+        ? await whatsappService.sendLocation(normalized, {
+            latitude: parsed.data.latitude,
+            longitude: parsed.data.longitude,
+            name: parsed.data.name,
+            address: parsed.data.address
+          })
+        : await whatsappService.sendMessage(normalized, parsed.data.message);
     const providerMessageId = provider?.messages?.[0]?.id;
 
     await prisma.messageLog.create({
       data: {
         mobile: normalized,
-        message,
+        message:
+          parsed.data.type === 'location'
+            ? JSON.stringify({
+                type: 'location',
+                latitude: parsed.data.latitude,
+                longitude: parsed.data.longitude,
+                name: parsed.data.name,
+                address: parsed.data.address
+              })
+            : parsed.data.message,
         direction: 'outgoing',
         app: appKeyword,
         status: 'sent',

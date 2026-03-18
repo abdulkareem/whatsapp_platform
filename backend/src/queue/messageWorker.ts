@@ -30,8 +30,10 @@ const processJob = async () => {
   const startedAt = Date.now();
 
   try {
-    const routeResult = await messageRouterService.routeIncomingMessage(job.payload.mobile, job.payload.message, {
+    const routeResult = await messageRouterService.routeIncomingMessage(job.payload.mobile, job.payload.message ?? '', {
       messageId: job.payload.messageId,
+      messageType: job.payload.messageType,
+      location: job.payload.location,
       beforeForward: enforceAppRateLimit
     });
 
