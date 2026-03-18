@@ -4,6 +4,7 @@ import { appService } from './appService';
 import { logger } from '../config/logger';
 import { env } from '../config/env';
 import { whatsappService } from './whatsappService';
+import type { InboundLocationPayload } from '../queue/messageQueue';
 
 type RouteStatus = 'routed' | 'unrouted' | 'inactive' | 'fallback_sent';
 
@@ -16,8 +17,62 @@ interface RouteResult {
 
 interface RoutingOptions {
   messageId?: string;
+  messageType?: string;
+  location?: InboundLocationPayload;
   beforeForward?: (appId: number, rateLimitRpm: number) => Promise<void>;
 }
+
+const fallbackLocationErrorMessage = 'Unable to process location. Please resend.';
+
+
+const getRoutingText = (message: string | undefined, location?: InboundLocationPayload) => {
+  if (message?.trim()) {
+    return message.trim();
+  }
+
+  if (location?.name?.trim()) {
+    return location.name.trim();
+  }
+
+  if (location?.address?.trim()) {
+    return location.address.trim();
+  }
+
+  return '';
+};
+
+const handleDownstreamResponse = async (mobile: string, responseData: unknown) => {
+  logger.info('Response received from downstream app', { mobile, response: responseData });
+
+  if (!responseData || typeof responseData !== 'object') {
+    return;
+  }
+
+  const responseRecord = responseData as Record<string, unknown>;
+  const responseType = responseRecord.type;
+
+  if (responseType === 'location') {
+    const rawLatitude = typeof responseRecord.latitude === 'string' ? Number(responseRecord.latitude) : responseRecord.latitude;
+    const rawLongitude = typeof responseRecord.longitude === 'string' ? Number(responseRecord.longitude) : responseRecord.longitude;
+
+    if (!Number.isFinite(rawLatitude) || !Number.isFinite(rawLongitude)) {
+      logger.error('Downstream app returned malformed location response', { mobile, response: responseData });
+      return;
+    }
+
+    await whatsappService.sendLocation(mobile, {
+      latitude: rawLatitude as number,
+      longitude: rawLongitude as number,
+      name: typeof responseRecord.name === 'string' ? responseRecord.name : undefined,
+      address: typeof responseRecord.address === 'string' ? responseRecord.address : undefined
+    });
+    return;
+  }
+
+  if (responseType === 'text' && typeof responseRecord.message === 'string' && responseRecord.message.trim()) {
+    await whatsappService.sendMessage(mobile, responseRecord.message);
+  }
+};
 
 export const messageRouterService = {
   normalizeKeyword(token: string): string {
@@ -99,8 +154,16 @@ export const messageRouterService = {
   },
 
   async routeIncomingMessage(mobile: string, message: string, options: RoutingOptions = {}): Promise<RouteResult> {
+    const routingText = getRoutingText(message, options.location);
+
+    if (options.messageType === 'location' && !options.location) {
+      logger.error('Inbound location payload missing coordinates', { mobile, messageId: options.messageId });
+      await whatsappService.sendMessage(mobile, fallbackLocationErrorMessage);
+      return { status: 'fallback_sent' };
+    }
+
     const startedAt = Date.now();
-    const resolution = await this.resolveRouteApp(mobile, message);
+    const resolution = await this.resolveRouteApp(mobile, routingText);
     const app = resolution.app;
 
     const status: RouteStatus = !app
@@ -112,7 +175,7 @@ export const messageRouterService = {
     await prisma.messageLog.create({
       data: {
         mobile,
-        message,
+        message: message || routingText || '[location]',
         direction: 'incoming',
         app: app?.keyword ?? 'UNROUTED',
         status
@@ -128,7 +191,7 @@ export const messageRouterService = {
         orderBy: [{ defaultApp: 'desc' }, { updatedAt: 'desc' }]
       });
       const fallbackMessage = fallbackSource?.fallbackMessage ?? 'No routing keyword was matched. Please send a supported keyword to continue.';
-      await whatsappService.sendMessage(mobile, fallbackMessage);
+      await whatsappService.sendMessage(mobile, options.messageType === 'location' ? fallbackLocationErrorMessage : fallbackMessage);
 
       logger.warn('No app matched and no default app configured', {
         mobile,
@@ -160,12 +223,13 @@ export const messageRouterService = {
 
     const effectiveTimeout = app.sessionTimeoutMinutes || env.SESSION_TIMEOUT_MINUTES;
     if (app.sessionEnabled) {
-      await this.createOrRefreshSession(mobile, app.id, message, effectiveTimeout);
+      await this.createOrRefreshSession(mobile, app.id, routingText || '[location]', effectiveTimeout);
     }
 
     const payload = {
       mobile,
       message,
+      type: options.messageType ?? 'text',
       keyword: resolution.keyword,
       command: resolution.command,
       messageId: options.messageId,
@@ -173,19 +237,36 @@ export const messageRouterService = {
       trigger: {
         keyword: resolution.keyword,
         command: resolution.command,
-        fullText: message
-      }
+        fullText: routingText
+      },
+      ...(options.location
+        ? {
+            location: {
+              type: 'location',
+              latitude: options.location.latitude,
+              longitude: options.location.longitude,
+              name: options.location.name,
+              address: options.location.address,
+              user: mobile
+            }
+          }
+        : {})
     };
 
-    await axios.post(app.endpoint, payload, { timeout: 8000 });
+    const downstreamResponse = await axios.post(app.endpoint, payload, { timeout: 8000 });
 
     logger.info('Message forwarded to app endpoint', {
       app: app.keyword,
       appId: app.id,
       mobile,
       routeMode: resolution.via,
+      messageType: options.messageType ?? 'text',
+      locationLatitude: options.location?.latitude,
+      locationLongitude: options.location?.longitude,
       latencyMs: Date.now() - startedAt
     });
+
+    await handleDownstreamResponse(mobile, downstreamResponse.data);
 
     return {
       status: 'routed',

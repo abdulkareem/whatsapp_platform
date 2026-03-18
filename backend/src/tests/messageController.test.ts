@@ -63,3 +63,39 @@ test('sendMessage rejects malformed payload', async () => {
   assert.equal(payload.status, 400);
   assert.equal((payload.body as { error: string }).error, 'Invalid request body');
 });
+
+
+test('sendMessage supports outbound location payloads', async () => {
+  const originalSendLocation = whatsappService.sendLocation;
+  const originalCreate = prisma.messageLog.create;
+
+  let createdData: any;
+  (whatsappService as unknown as { sendLocation: (...args: any[]) => Promise<unknown> }).sendLocation = async () => ({ messages: [{ id: 'wamid.location' }] });
+  (prisma.messageLog as unknown as { create: (args: any) => Promise<unknown> }).create = async (args: any) => {
+    createdData = args.data;
+    return { id: 1 } as never;
+  };
+
+  const req = {
+    body: {
+      type: 'location',
+      mobile: '+1 (202) 555-0199',
+      latitude: 37.422,
+      longitude: -122.084,
+      name: 'Googleplex',
+      address: '1600 Amphitheatre Parkway'
+    },
+    appContext: { id: 10, name: 'CRM', keyword: 'CRM', rateLimitRpm: 50 }
+  } as unknown as Request;
+
+  const { res, payload } = createResponse();
+  await messageController.sendMessage(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.equal(createdData.mobile, '12025550199');
+  assert.equal(createdData.providerMessageId, 'wamid.location');
+  assert.match(createdData.message, /"type":"location"/);
+
+  (whatsappService as unknown as { sendLocation: typeof originalSendLocation }).sendLocation = originalSendLocation;
+  (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
+});

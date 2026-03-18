@@ -23,6 +23,13 @@ export interface MessageLog {
   createdAt: string;
 }
 
+export interface WhatsAppLocation {
+  latitude?: number | string;
+  longitude?: number | string;
+  name?: string;
+  address?: string;
+}
+
 export interface WhatsAppInboundPayload {
   object?: string;
   entry?: Array<{
@@ -52,6 +59,7 @@ export interface WhatsAppInboundPayload {
           image?: { caption?: string };
           video?: { caption?: string };
           document?: { caption?: string };
+          location?: WhatsAppLocation;
           timestamp?: string;
         }>;
       };
@@ -74,5 +82,6 @@ export interface WhatsAppInboundPayload {
     image?: { caption?: string };
     video?: { caption?: string };
     document?: { caption?: string };
+    location?: WhatsAppLocation;
   }>;
 }

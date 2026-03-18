@@ -1,9 +1,18 @@
 import { env } from '../config/env';
 
+export interface InboundLocationPayload {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}
+
 export interface InboundMessageQueuePayload {
   mobile: string;
-  message: string;
+  message?: string;
   messageId?: string;
+  messageType?: string;
+  location?: InboundLocationPayload;
 }
 
 interface QueuedJob {
