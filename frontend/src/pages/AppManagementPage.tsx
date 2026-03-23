@@ -16,6 +16,15 @@ interface AppFormState {
   fallbackMessage: string;
 }
 
+interface AppRoutingDraft {
+  sessionEnabled: boolean;
+  sessionTimeoutMinutes: string;
+  keywordRequired: boolean;
+  defaultApp: boolean;
+  rateLimitRpm: string;
+  fallbackMessage: string;
+}
+
 const initialForm: AppFormState = {
   name: '',
   keyword: '',
@@ -29,9 +38,31 @@ const initialForm: AppFormState = {
 };
 
 const keywordPattern = /^[A-Z0-9_]+$/;
+const positiveIntegerPattern = /^\d+$/;
+
+const toRoutingDraft = (app: AppRecord): AppRoutingDraft => ({
+  sessionEnabled: app.sessionEnabled,
+  sessionTimeoutMinutes: String(app.sessionTimeoutMinutes),
+  keywordRequired: app.keywordRequired,
+  defaultApp: app.defaultApp,
+  rateLimitRpm: String(app.rateLimitRpm),
+  fallbackMessage: app.fallbackMessage ?? ''
+});
+
+const parsePositiveInteger = (value: string) => {
+  const trimmedValue = value.trim();
+
+  if (!positiveIntegerPattern.test(trimmedValue)) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null;
+};
 
 export default function AppManagementPage() {
   const [apps, setApps] = useState<AppRecord[]>([]);
+  const [routingDrafts, setRoutingDrafts] = useState<Record<number, AppRoutingDraft>>({});
   const [form, setForm] = useState<AppFormState>(initialForm);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +71,17 @@ export default function AppManagementPage() {
 
   const loadApps = async () => {
     const response = await api.get('/api/apps');
-    setApps(response.data);
+    const loadedApps = response.data as AppRecord[];
+    setApps(loadedApps);
+    setRoutingDrafts((current) => {
+      const nextDrafts: Record<number, AppRoutingDraft> = {};
+
+      for (const app of loadedApps) {
+        nextDrafts[app.id] = current[app.id] ?? toRoutingDraft(app);
+      }
+
+      return nextDrafts;
+    });
   };
 
   useEffect(() => {
@@ -117,25 +158,55 @@ export default function AppManagementPage() {
     setStatus(null);
     setError(null);
 
+    const draft = routingDrafts[app.id] ?? toRoutingDraft(app);
+    const sessionTimeoutMinutes = parsePositiveInteger(draft.sessionTimeoutMinutes);
+    const rateLimitRpm = parsePositiveInteger(draft.rateLimitRpm);
+
+    if (!sessionTimeoutMinutes) {
+      setError(`Session timeout for ${app.name} must be a whole number greater than 0.`);
+      return;
+    }
+
+    if (!rateLimitRpm) {
+      setError(`Rate limit for ${app.name} must be a whole number greater than 0.`);
+      return;
+    }
+
     try {
       const token = auth.getToken();
       await api.patch(
         `/api/apps/${app.id}/config`,
         {
-          rateLimitRpm: app.rateLimitRpm,
-          sessionEnabled: app.sessionEnabled,
-          sessionTimeoutMinutes: app.sessionTimeoutMinutes,
-          keywordRequired: app.keywordRequired,
-          defaultApp: app.defaultApp,
-          fallbackMessage: app.fallbackMessage || null
+          rateLimitRpm,
+          sessionEnabled: draft.sessionEnabled,
+          sessionTimeoutMinutes,
+          keywordRequired: draft.keywordRequired,
+          defaultApp: draft.defaultApp,
+          fallbackMessage: draft.fallbackMessage.trim() || null
         },
         { headers: { 'X-ADMIN-TOKEN': token ?? '' } }
       );
 
       setStatus(`Updated routing config for ${app.name}.`);
       await loadApps();
-    } catch {
-      setError(`Failed to update routing config for ${app.name}.`);
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        const statusCode = error.response?.status;
+        const backendError = error.response?.data?.error;
+
+        if (statusCode === 401 || statusCode === 403) {
+          auth.clearToken();
+          setError('Admin session expired. Please login again and save the routing config.');
+          return;
+        }
+
+        if (backendError) {
+          setError(`Failed to update routing config for ${app.name}: ${backendError}`);
+          return;
+        }
+      }
+
+      setError(`Failed to update routing config for ${app.name}. Check the session timeout, rate limit, and admin session.`);
     }
   };
 
@@ -223,6 +294,19 @@ export default function AppManagementPage() {
     }
   };
 
+  const updateRoutingDraft = (id: number, updates: Partial<AppRoutingDraft>) => {
+    const sourceApp = apps.find((app) => app.id === id);
+    if (!sourceApp) return;
+
+    setRoutingDrafts((current) => ({
+      ...current,
+      [id]: {
+        ...(current[id] ?? toRoutingDraft(sourceApp)),
+        ...updates
+      }
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -265,17 +349,29 @@ export default function AppManagementPage() {
           <tbody>
             {apps.map((app) => (
               <tr key={app.id} className="border-t align-top">
+                {(() => {
+                  const routingDraft = routingDrafts[app.id] ?? toRoutingDraft(app);
+                  const canSaveRouting =
+                    parsePositiveInteger(routingDraft.sessionTimeoutMinutes) !== null &&
+                    parsePositiveInteger(routingDraft.rateLimitRpm) !== null;
+
+                  return (
+                    <>
                 <td className="p-3">{app.name}</td>
                 <td className="p-3 font-semibold">{app.keyword}</td>
                 <td className="p-3 text-slate-700">{app.endpoint}</td>
                 <td className="space-y-2 p-3">
-                  <label className="flex items-center gap-1"><input checked={app.sessionEnabled} onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, sessionEnabled: e.target.checked } : item))} type="checkbox" />Session</label>
-                  <label className="flex items-center gap-1"><input checked={app.keywordRequired} onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, keywordRequired: e.target.checked } : item))} type="checkbox" />Require keyword</label>
-                  <label className="flex items-center gap-1"><input checked={app.defaultApp} onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, defaultApp: e.target.checked } : item))} type="checkbox" />Default</label>
-                  <input className="w-full rounded border px-2 py-1" min={1} onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, sessionTimeoutMinutes: Number(e.target.value) } : item))} type="number" value={app.sessionTimeoutMinutes} />
-                  <input className="w-full rounded border px-2 py-1" min={1} onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, rateLimitRpm: Number(e.target.value) } : item))} type="number" value={app.rateLimitRpm} />
-                  <textarea className="w-full rounded border px-2 py-1" onChange={(e) => setApps((prev) => prev.map((item) => item.id === app.id ? { ...item, fallbackMessage: e.target.value } : item))} rows={2} value={app.fallbackMessage ?? ''} />
-                  <button className="rounded border px-2 py-1" onClick={() => void updateRoutingConfig(app)} type="button">Save Routing</button>
+                  <label className="flex items-center gap-1"><input checked={routingDraft.sessionEnabled} onChange={(e) => updateRoutingDraft(app.id, { sessionEnabled: e.target.checked })} type="checkbox" />Session</label>
+                  <label className="block text-xs text-slate-600">Allow sessions for this many minutes
+                    <input className="mt-1 w-full rounded border px-2 py-1" min={1} onChange={(e) => updateRoutingDraft(app.id, { sessionTimeoutMinutes: e.target.value })} step={1} type="number" value={routingDraft.sessionTimeoutMinutes} />
+                  </label>
+                  <label className="flex items-center gap-1"><input checked={routingDraft.keywordRequired} onChange={(e) => updateRoutingDraft(app.id, { keywordRequired: e.target.checked })} type="checkbox" />Require keyword</label>
+                  <label className="flex items-center gap-1"><input checked={routingDraft.defaultApp} onChange={(e) => updateRoutingDraft(app.id, { defaultApp: e.target.checked })} type="checkbox" />Default</label>
+                  <label className="block text-xs text-slate-600">Rate limit (requests/minute)
+                    <input className="mt-1 w-full rounded border px-2 py-1" min={1} onChange={(e) => updateRoutingDraft(app.id, { rateLimitRpm: e.target.value })} step={1} type="number" value={routingDraft.rateLimitRpm} />
+                  </label>
+                  <textarea className="w-full rounded border px-2 py-1" onChange={(e) => updateRoutingDraft(app.id, { fallbackMessage: e.target.value })} rows={2} value={routingDraft.fallbackMessage} />
+                  <button className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canSaveRouting} onClick={() => void updateRoutingConfig(app)} type="button">Save Routing</button>
                 </td>
                 <td className="p-3">
                   <div className="mb-2 flex items-center gap-2">
@@ -300,6 +396,9 @@ export default function AppManagementPage() {
                     Delete App
                   </button>
                 </td>
+                    </>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
