@@ -9,12 +9,14 @@ import { logger } from '../config/logger';
 const sendTextMessageSchema = z.object({
   type: z.literal('text').optional(),
   mobile: z.string().trim().min(5),
+  countryCode: z.string().trim().min(1).optional(),
   message: z.string().trim().min(1).max(4096)
 });
 
 const sendLocationMessageSchema = z.object({
   type: z.literal('location'),
   mobile: z.string().trim().min(5),
+  countryCode: z.string().trim().min(1).optional(),
   latitude: z.coerce.number().finite(),
   longitude: z.coerce.number().finite(),
   name: z.string().trim().min(1).max(256).optional(),
@@ -25,6 +27,7 @@ const sendMessageSchema = z.union([sendTextMessageSchema, sendLocationMessageSch
 
 const sendOtpSchema = z.object({
   mobile: z.string().trim().min(5),
+  countryCode: z.string().trim().min(1).optional(),
   app: z.string().trim().min(1)
 });
 
@@ -39,7 +42,7 @@ export const messageController = {
       });
     }
 
-    const normalized = normalizePhone(parsed.data.mobile);
+    const normalized = normalizePhone(parsed.data.mobile, parsed.data.countryCode);
     const appKeyword = req.appContext?.keyword ?? 'SYSTEM';
 
     const provider =
@@ -93,8 +96,8 @@ export const messageController = {
       });
     }
 
-    const { mobile, app } = parsed.data;
-    const result = await otpService.sendOTP(normalizePhone(mobile), app);
+    const { mobile, countryCode, app } = parsed.data;
+    const result = await otpService.sendOTP(normalizePhone(mobile, countryCode), app);
     return res.status(202).json({ success: true, ...result });
   },
 

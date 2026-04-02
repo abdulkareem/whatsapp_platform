@@ -120,10 +120,13 @@ curl -X POST "$API_BASE_URL/api/messages/send" \
   -H "Content-Type: application/json" \
   -H "APP_API_KEY: <APP_API_KEY>" \
   -d '{
-    "mobile": "+12025550199",
+    "mobile": "2025550199",
+    "countryCode": "+1",
     "message": "Your order has shipped"
   }'
 ```
+
+`countryCode` is optional. The platform does **not** auto-prepend `+91`; pass the destination country code from your connected app when needed.
 
 Example response:
 

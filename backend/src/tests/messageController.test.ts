@@ -33,7 +33,7 @@ test('sendMessage logs outbound with app context and provider message id', async
   };
 
   const req = {
-    body: { mobile: '+1 (202) 555-0199', message: 'hello' },
+    body: { mobile: '202-555-0199', countryCode: '+1', message: 'hello' },
     appContext: { id: 10, name: 'CRM', keyword: 'CRM', rateLimitRpm: 50 }
   } as unknown as Request;
 
@@ -97,5 +97,31 @@ test('sendMessage supports outbound location payloads', async () => {
   assert.match(createdData.message, /"type":"location"/);
 
   (whatsappService as unknown as { sendLocation: typeof originalSendLocation }).sendLocation = originalSendLocation;
+  (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
+});
+
+test('sendMessage keeps existing international number without prepending provided country code', async () => {
+  const originalSend = whatsappService.sendMessage;
+  const originalCreate = prisma.messageLog.create;
+
+  let createdData: unknown;
+  (whatsappService as unknown as { sendMessage: (mobile: string, message: string) => Promise<unknown> }).sendMessage = async () => ({ messages: [{ id: 'wamid.abc' }] });
+  (prisma.messageLog as unknown as { create: (args: any) => Promise<unknown> }).create = async (args: any) => {
+    createdData = args.data;
+    return { id: 2 } as never;
+  };
+
+  const req = {
+    body: { mobile: '+44 20 7946 0958', countryCode: '+91', message: 'hello' },
+    appContext: { id: 11, name: 'CRM', keyword: 'CRM', rateLimitRpm: 50 }
+  } as unknown as Request;
+
+  const { res, payload } = createResponse();
+  await messageController.sendMessage(req, res);
+
+  assert.equal(payload.status, 200);
+  assert.equal((createdData as { mobile: string }).mobile, '442079460958');
+
+  (whatsappService as unknown as { sendMessage: typeof originalSend }).sendMessage = originalSend;
   (prisma.messageLog as unknown as { create: typeof originalCreate }).create = originalCreate;
 });
