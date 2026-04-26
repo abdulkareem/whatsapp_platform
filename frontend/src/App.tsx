@@ -10,6 +10,9 @@ import WorkflowsPage from './pages/WorkflowsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import { auth } from './services/auth';
+import ShopLoginPage from './pages/ShopLoginPage';
+import ShopDashboardPage from './pages/ShopDashboardPage';
+import { shopAuth } from './services/shopAuth';
 
 const navItems = [
   ['/dashboard', 'Gateway Health'],
@@ -66,12 +69,16 @@ function AppLayout() {
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => auth.isLoggedIn());
+  const [shopLoggedIn, setShopLoggedIn] = useState(() => shopAuth.isLoggedIn());
 
   useEffect(() => auth.subscribe(() => setLoggedIn(auth.isLoggedIn())), []);
+  useEffect(() => shopAuth.subscribe(() => setShopLoggedIn(shopAuth.isLoggedIn())), []);
 
   return (
     <Routes>
       <Route path="/login" element={loggedIn ? <Navigate replace to="/dashboard" /> : <AdminLoginPage />} />
+      <Route path="/shop/login" element={shopLoggedIn ? <Navigate replace to="/shop/dashboard" /> : <ShopLoginPage />} />
+      <Route path="/shop/dashboard" element={shopLoggedIn ? <ShopDashboardPage /> : <Navigate replace to="/shop/login" />} />
       <Route path="/*" element={loggedIn ? <AppLayout /> : <Navigate replace to="/login" />} />
     </Routes>
   );
