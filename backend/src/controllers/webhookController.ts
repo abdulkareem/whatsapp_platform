@@ -4,6 +4,8 @@ import { logger } from '../config/logger';
 import type { WhatsAppInboundPayload, WhatsAppLocation } from '../types/shared';
 import { messageQueue } from '../queue/messageQueue';
 import { inboundMessagesCounter } from '../config/metrics';
+import { prisma } from '../database/prisma';
+import { whatsappService } from '../services/whatsappService';
 
 type NormalizedInboundMessage = {
   mobile?: string;
@@ -93,6 +95,11 @@ const normalizeMessages = (body: WhatsAppInboundPayload): NormalizedInboundMessa
 
     return normalized;
   });
+};
+
+const isOptOutMessage = (message?: string) => {
+  const normalized = message?.trim().toUpperCase();
+  return normalized === 'STOP' || normalized === 'UNSUBSCRIBE' || normalized === 'END';
 };
 
 export const webhookController = {
@@ -202,6 +209,16 @@ export const webhookController = {
           hasMobile: Boolean(mobile),
           hasTextBody: Boolean(message)
         });
+        continue;
+      }
+
+      if (isOptOutMessage(message)) {
+        await prisma.contact.updateMany({
+          where: { mobile },
+          data: { optOutStatus: true }
+        });
+        await whatsappService.sendMessage(mobile, 'You have been unsubscribed. Reply START anytime to subscribe again.');
+        logger.info('Contact opted out from broadcasts', { mobile, messageId, message });
         continue;
       }
 

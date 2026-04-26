@@ -6,5 +6,7 @@ import { apiRateLimiter } from '../middleware/rateLimitMiddleware';
 const router = Router();
 
 router.post('/', authMiddleware, apiRateLimiter, broadcastController.create);
+router.post('/sponsored/preview', authMiddleware, apiRateLimiter, broadcastController.previewSponsored);
+router.post('/sponsored', authMiddleware, apiRateLimiter, broadcastController.createSponsored);
 
 export default router;
