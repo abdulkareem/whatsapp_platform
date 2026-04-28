@@ -12,6 +12,7 @@ import SettingsPage from './pages/SettingsPage';
 import { auth } from './services/auth';
 import ShopLoginPage from './pages/ShopLoginPage';
 import ShopDashboardPage from './pages/ShopDashboardPage';
+import LandingPage from './pages/LandingPage';
 import { shopAuth } from './services/shopAuth';
 
 const navItems = [
@@ -76,10 +77,11 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={loggedIn ? <Navigate replace to="/dashboard" /> : <AdminLoginPage />} />
       <Route path="/shop/login" element={shopLoggedIn ? <Navigate replace to="/shop/dashboard" /> : <ShopLoginPage />} />
       <Route path="/shop/dashboard" element={shopLoggedIn ? <ShopDashboardPage /> : <Navigate replace to="/shop/login" />} />
-      <Route path="/*" element={loggedIn ? <AppLayout /> : <Navigate replace to="/login" />} />
+      <Route path="/*" element={loggedIn ? <AppLayout /> : <Navigate replace to="/" />} />
     </Routes>
   );
 }
